@@ -1,0 +1,9 @@
+.idea
+.gitignore
+.npmrc
+tsconfig.json
+tslint.json
+docs
+src
+.storybook
+picture.gif

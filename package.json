@@ -1,0 +1,59 @@
+{
+    "name": "@muzikanto/cropper",
+    "version": "1.0.10",
+    "description": "image crop component",
+    "license": "MIT",
+    "main": "./index.js",
+    "typings": "./index.d.ts",
+    "scripts": {
+        "start": "start-storybook -p 5001",
+        "build:stories": "build-storybook -o docs",
+        "build:components": "tsc -b",
+        "clean": "rm -rf *.ts && rm -rf *.tsx && rm -rf *.js",
+        "build": "npm run clean && tsc -b",
+        "linter": "tslint -c tslint.json 'src/**/*.ts' --fix",
+        "prepublish": "npm run build",
+        "postpublish": "npm run clean"
+    },
+    "homepage": "https://muzikanto.github.io/cropper",
+    "keywords": [
+        "react",
+        "picture",
+        "image",
+        "loading",
+        "error"
+    ],
+    "repository": {
+        "url": "https://github.com/Muzikanto/cropper"
+    },
+    "bugs": {
+        "url": "https://github.com/Muzikanto/cropper"
+    },
+    "peerDependencies": {},
+    "dependencies": {
+        "react": "16.12.0",
+        "react-dom": "16.12.0",
+        "@types/react": "16.9",
+        "@material-ui/core": "4.9.10",
+        "@material-ui/styles": "4.9.10"
+    },
+    "devDependencies": {
+        "babel-preset-react-app": "^9.1.2",
+        "babel-loader": "8.0.6",
+        "storybook-dep-webpack-plugin": "1.0.3",
+        "@storybook/react": "5.3.12",
+        "@storybook/addon-knobs": "5.1.11",
+        "@storybook/addons": "5.1.11",
+        "@types/storybook__addon-knobs": "5.0.3",
+        "@types/node": "13.9.0",
+        "@types/react-dom": "16.9",
+        "@types/storybook__react": "4.0.2",
+        "install-peers": "1.0.3",
+        "path": "0.12.7",
+        "react-docgen-typescript-loader": "3.7.0",
+        "tslint": "5.20.1",
+        "typescript": "3.6",
+        "webpack": "4.41.5",
+        "webpack-cli": "3.3.9"
+    }
+}
