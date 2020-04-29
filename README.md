@@ -18,8 +18,6 @@
 
 <!-- /TOC -->
 
-![](https://github.com/Muzikanto/picture/blob/master/picture.gif?raw=true)
-
 ## Introduction
 
 Peer dependencies: 
