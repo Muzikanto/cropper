@@ -61,10 +61,6 @@ export interface Crop {
     height: number;
 }
 
-export interface ImageCrop extends Crop {
-    zoom: number;
-}
-
 type DragItem = 1 | 2 | 3 | 4;
 
 export interface CropperProps extends WithStyles<typeof styles> {
@@ -74,7 +70,7 @@ export interface CropperProps extends WithStyles<typeof styles> {
 export interface CropperState {
     dragged: DragItem | null;
     crop: Crop;
-    image: ImageCrop;
+    image: Crop;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -93,9 +89,12 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         image: {
             x: 0, y: 0,
             width: 296, height: 296,
-            zoom: 1,
         },
     };
+
+    protected onChange = (state: Partial<CropperState>) => {
+        this.setState({...this.state, ...state});
+    }
 
     public componentDidMount(): void {
         const {crop} = this.state;
@@ -141,7 +140,6 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                             y,
                             width,
                             height,
-                            zoom,
                         },
                     });
                 };
@@ -174,8 +172,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 this.image,
                 image.x + 24,
                 image.y + 152,
-                this.image.width * image.zoom,
-                this.image.height * image.zoom,
+                image.width,
+                image.height,
             );
         }
     }
@@ -217,11 +215,27 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 const diffX = crop.x - x;
 
                 if (diffX > 0) {
-                    nextImage.x = x;
+                    console.log(nextImage.height, rect.height)
+                    if (nextImage.height >= rect.height) {
+                        const zoom = width / nextImage.width;
+
+                        nextImage.width = nextImage.width * zoom;
+                        nextImage.height = nextImage.height * zoom;
+                        nextImage.x = x;
+                        nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
+                    }
+                } else {
+                    if (nextImage.height >= rect.height) {
+                        const zoom = width / nextImage.width;
+
+                        nextImage.width = nextImage.width * zoom;
+                        nextImage.height = nextImage.height * zoom;
+                        nextImage.x = x;
+                        nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
+                    }
                 }
 
-                this.setState({
-                    ...this.state,
+                this.onChange({
                     crop: {
                         ...crop,
                         x,
@@ -248,8 +262,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     height = crop.height;
                 }
 
-                this.setState({
-                    ...this.state,
+                this.onChange({
                     crop: {
                         ...crop,
                         y,
@@ -274,8 +287,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     height = crop.height;
                 }
 
-                this.setState({
-                    ...this.state,
+                this.onChange({
                     crop: {
                         ...crop,
                         x,
@@ -300,8 +312,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     height = crop.height;
                 }
 
-                this.setState({
-                    ...this.state,
+                this.onChange({
                     crop: {
                         ...crop,
                         width,
@@ -312,7 +323,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         }
     };
 
-    protected zoomTo = (img: HTMLImageElement, imageCrop: ImageCrop, crop: Crop, zoom: number) => {
+    protected zoomTo = (img: HTMLImageElement, imageCrop: Crop, crop: Crop, zoom: number): Crop => {
         const width = img.width * zoom;
         const height = img.height * zoom;
 
@@ -328,7 +339,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         const y = imageCrop.y - (diffH * yPercent);
 
         return {
-            x, y, width, height,
+            x, y,
+            width, height,
         };
     }
 
@@ -338,29 +350,40 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
         const {image, crop} = this.state;
 
-        const deltaY = e.deltaY;
-
-        const nextImage = {
-            ...image,
-            zoom: image.zoom - (deltaY / 5000),
-        };
-
         if (this.image && this.cropArea) {
+            const deltaY = e.deltaY;
+            const lastZoom = image.height / this.image.height;
+            let zoom = lastZoom - (deltaY / 5000);
+
+            const nextImage = {...image};
+
             // const rect = this.cropArea.getBoundingClientRect();
 
             if (deltaY < 0) {
-                const nextImageCrop = this.zoomTo(this.image, image, crop, nextImage.zoom);
+                // инкремент
+                const nextImageCrop = this.zoomTo(this.image, image, crop, zoom);
 
                 Object.assign(nextImage, nextImageCrop);
             } else {
-                const nextImageCrop = this.zoomTo(this.image, image, crop, nextImage.zoom);
+                // декремент
 
-                Object.assign(nextImage, nextImageCrop);
+                // если картинка меньше зума, ставим максимально возможный
+                if (this.image.width * zoom < crop.width) {
+                    zoom = crop.width / this.image.width;
+                }
+                if (this.image.height * zoom < crop.height) {
+                    zoom = crop.height / this.image.height;
+                }
+
+                Object.assign(
+                    nextImage,
+                    this.zoomTo(this.image, image, crop, zoom),
+                );
 
                 const topDiff = crop.y - nextImage.y;
                 const leftDiff = crop.x - nextImage.x;
-                const rightDiff = (crop.x + crop.width) - (nextImage.x + this.image.width * nextImage.zoom);
-                const bottomDiff = (crop.y + crop.height) - (nextImage.y + this.image.height * nextImage.zoom);
+                const rightDiff = (crop.x + crop.width) - (nextImage.x + this.image.width * zoom);
+                const bottomDiff = (crop.y + crop.height) - (nextImage.y + this.image.height * zoom);
 
                 const top = Math.abs(topDiff) < Math.abs(bottomDiff);
                 const left = Math.abs(leftDiff) < Math.abs(rightDiff);
@@ -416,31 +439,16 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
                 if (nextImage.width < crop.width) {
                     return;
-                    if (!(image.x === nextImage.x || image.width === nextImage.width)) {
-                        nextImage.x = crop.x;
-                        nextImage.width = crop.width;
-                        nextImage.zoom = crop.width / this.image.width;
-                    } else {
-                        return;
-                    }
                 }
                 if (nextImage.height < crop.height) {
                     return;
-                    if (!(image.y === nextImage.y || image.height === nextImage.height)) {
-                        nextImage.y = crop.y;
-                        nextImage.height = crop.height;
-                        nextImage.zoom = crop.height / this.image.height;
-                    } else {
-                        return;
-                    }
                 }
             }
-        }
 
-        this.setState({
-            ...this.state,
-            image: nextImage,
-        });
+            this.onChange({
+                image: nextImage,
+            });
+        }
     }
 
     public render() {
