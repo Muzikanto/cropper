@@ -187,13 +187,15 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         this.setState({...this.state, dragged: null});
     };
     protected onMouseMove = (e: any) => {
-        const {dragged, crop} = this.state;
+        const {dragged, crop, image} = this.state;
 
         if (dragged && this.cropArea && this.image) {
             const rect = this.cropArea.getBoundingClientRect();
 
             const rawX = e.clientX - rect.left;
             const rawY = e.clientY - rect.top;
+
+            const nextImage = {...image};
 
             if (dragged === 1) {
                 let x = rawX < 0 ? 0 : rawX;
@@ -211,6 +213,13 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     height = crop.height;
                 }
 
+                // растягиваем влево
+                const diffX = crop.x - x;
+
+                if (diffX > 0) {
+                    nextImage.x = x;
+                }
+
                 this.setState({
                     ...this.state,
                     crop: {
@@ -220,6 +229,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         width,
                         height,
                     },
+                    image: nextImage,
                 });
             } else if (dragged === 2) {
                 let y = rawY < 0 ? 0 : rawY;
@@ -404,21 +414,22 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     }
                 }
 
-                const equalWidth = nextImage.width === crop.width;
-                const equalHeight = nextImage.height === crop.height;
-
                 if (nextImage.width < crop.width) {
-                    if (nextImage.width !== crop.width) {
+                    return;
+                    if (!(image.x === nextImage.x || image.width === nextImage.width)) {
                         nextImage.x = crop.x;
                         nextImage.width = crop.width;
+                        nextImage.zoom = crop.width / this.image.width;
                     } else {
                         return;
                     }
                 }
                 if (nextImage.height < crop.height) {
-                    if (nextImage.height !== crop.height) {
+                    return;
+                    if (!(image.y === nextImage.y || image.height === nextImage.height)) {
                         nextImage.y = crop.y;
                         nextImage.height = crop.height;
+                        nextImage.zoom = crop.height / this.image.height;
                     } else {
                         return;
                     }
