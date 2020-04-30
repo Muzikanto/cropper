@@ -71,6 +71,7 @@ export interface CropperState {
     dragged: DragItem | null;
     crop: Crop;
     image: Crop;
+    zoom: number;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -90,6 +91,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
             x: 0, y: 0,
             width: 296, height: 296,
         },
+        zoom: 1.2,
     };
 
     protected onChange = (state: Partial<CropperState>) => {
@@ -167,12 +169,15 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         if (this.ctx && this.image && this.canvas) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+            const zoomedWidth = image.width * this.state.zoom;
+            const zoomedHeight = image.height * this.state.zoom;
+
             this.ctx.drawImage(
                 this.image,
                 image.x + 24,
                 image.y + 152,
-                image.width,
-                image.height,
+                image.width * this.state.zoom,
+                image.height * this.state.zoom,
             );
         }
     }
@@ -225,8 +230,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                             nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
                         }
                     }
-                }
-                else {
+                } else {
                     if (nextImage.height >= rect.height) {
                         const zoom = nextCrop.width / nextImage.width;
                         const imageHeight = nextImage.height * zoom;
@@ -239,12 +243,11 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         }
                     }
                 }
-            }
-            else if (dragged === 2) {
+            } else if (dragged === 2) {
                 nextCrop.y = rawY < 0 ? 0 : rawY;
 
                 nextCrop.width = rawX - crop.x;
-                nextCrop. height = crop.height - (nextCrop.y - crop.y);
+                nextCrop.height = crop.height - (nextCrop.y - crop.y);
 
                 if (nextCrop.width < 50) {
                     nextCrop.width = crop.width;
@@ -271,8 +274,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                             nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
                         }
                     }
-                }
-                else {
+                } else {
                     if (nextImage.height >= rect.height) {
                         const zoom = nextCrop.width / nextImage.width;
                         const imageHeight = nextImage.height * zoom;
@@ -284,12 +286,11 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         }
                     }
                 }
-            }
-            else if (dragged === 3) {
-                nextCrop. x = rawX < 0 ? 0 : rawX;
+            } else if (dragged === 3) {
+                nextCrop.x = rawX < 0 ? 0 : rawX;
 
-                nextCrop. width = crop.width - (nextCrop.x - crop.x);
-                nextCrop. height = rawY - crop.y;
+                nextCrop.width = crop.width - (nextCrop.x - crop.x);
+                nextCrop.height = rawY - crop.y;
 
                 if (nextCrop.width < 50) {
                     nextCrop.x = crop.x;
@@ -301,10 +302,9 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 if (crop.y + nextCrop.height > rect.height) {
                     nextCrop.height = crop.height;
                 }
-            }
-            else if (dragged === 4) {
-                nextCrop. width = rawX - crop.x;
-                nextCrop. height = rawY - crop.y;
+            } else if (dragged === 4) {
+                nextCrop.width = rawX - crop.x;
+                nextCrop.height = rawY - crop.y;
 
                 if (nextCrop.width < 50) {
                     nextCrop.width = crop.width;
