@@ -127,8 +127,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
                     // const y = crop.y;
 
-                    this.setState({
-                        ...this.state,
+                    this.onChange({
                         crop: {
                             ...this.state.crop,
                             x,
@@ -182,7 +181,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         this.setState({...this.state, dragged: drag});
     };
     protected onMouseUp = () => {
-        this.setState({...this.state, dragged: null});
+        this.onChange({...this.state, dragged: null});
     };
     protected onMouseMove = (e: any) => {
         const {dragged, crop, image} = this.state;
@@ -194,132 +193,137 @@ class Cropper extends React.Component<CropperProps, CropperState> {
             const rawY = e.clientY - rect.top;
 
             const nextImage = {...image};
+            const nextCrop = {...crop};
 
             if (dragged === 1) {
-                let x = rawX < 0 ? 0 : rawX;
-                let y = rawY < 0 ? 0 : rawY;
+                nextCrop.x = rawX < 0 ? 0 : rawX;
+                nextCrop.y = rawY < 0 ? 0 : rawY;
 
-                let width = crop.width - (x - crop.x);
-                let height = crop.height - (y - crop.y);
+                nextCrop.width = crop.width - (nextCrop.x - crop.x);
+                nextCrop.height = crop.height - (nextCrop.y - crop.y);
 
-                if (width < 50) {
-                    x = crop.x;
-                    width = crop.width;
+                if (nextCrop.width < 50) {
+                    nextCrop.x = crop.x;
+                    nextCrop.width = crop.width;
                 }
-                if (height < 50) {
-                    y = crop.y;
-                    height = crop.height;
+                if (nextCrop.height < 50) {
+                    nextCrop.y = crop.y;
+                    nextCrop.height = crop.height;
                 }
 
                 // растягиваем влево
-                const diffX = crop.x - x;
-
+                const diffX = crop.x - nextCrop.x;
                 if (diffX > 0) {
-                    console.log(nextImage.height, rect.height)
                     if (nextImage.height >= rect.height) {
-                        const zoom = width / nextImage.width;
+                        const zoom = nextCrop.width / nextImage.width;
+                        const imageHeight = nextImage.height * zoom;
 
-                        nextImage.width = nextImage.width * zoom;
-                        nextImage.height = nextImage.height * zoom;
-                        nextImage.x = x;
-                        nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
-                    }
-                } else {
-                    if (nextImage.height >= rect.height) {
-                        const zoom = width / nextImage.width;
-
-                        nextImage.width = nextImage.width * zoom;
-                        nextImage.height = nextImage.height * zoom;
-                        nextImage.x = x;
-                        nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
+                        if (imageHeight >= rect.height) {
+                            nextImage.width = nextImage.width * zoom;
+                            nextImage.height = imageHeight;
+                            nextImage.x = nextCrop.x;
+                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
+                        }
                     }
                 }
+                else {
+                    if (nextImage.height >= rect.height) {
+                        const zoom = nextCrop.width / nextImage.width;
+                        const imageHeight = nextImage.height * zoom;
 
-                this.onChange({
-                    crop: {
-                        ...crop,
-                        x,
-                        y,
-                        width,
-                        height,
-                    },
-                    image: nextImage,
-                });
-            } else if (dragged === 2) {
-                let y = rawY < 0 ? 0 : rawY;
-
-                let width = rawX - crop.x;
-                let height = crop.height - (y - crop.y);
-
-                if (width < 50) {
-                    width = crop.width;
+                        if (imageHeight >= rect.height) {
+                            nextImage.width = nextImage.width * zoom;
+                            nextImage.height = imageHeight;
+                            nextImage.x = nextCrop.x;
+                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
+                        }
+                    }
                 }
-                if (crop.x + width > rect.width) {
-                    width = crop.width;
-                }
-                if (height < 50) {
-                    y = crop.y;
-                    height = crop.height;
-                }
-
-                this.onChange({
-                    crop: {
-                        ...crop,
-                        y,
-                        width,
-                        height,
-                    },
-                });
-            } else if (dragged === 3) {
-                let x = rawX < 0 ? 0 : rawX;
-
-                let width = crop.width - (x - crop.x);
-                let height = rawY - crop.y;
-
-                if (width < 50) {
-                    x = crop.x;
-                    width = crop.width;
-                }
-                if (height < 50) {
-                    height = crop.height;
-                }
-                if (crop.y + height > rect.height) {
-                    height = crop.height;
-                }
-
-                this.onChange({
-                    crop: {
-                        ...crop,
-                        x,
-                        width,
-                        height,
-                    },
-                });
-            } else if (dragged === 4) {
-                let width = rawX - crop.x;
-                let height = rawY - crop.y;
-
-                if (width < 50) {
-                    width = crop.width;
-                }
-                if (crop.x + width > rect.width) {
-                    width = crop.width;
-                }
-                if (height < 50) {
-                    height = crop.height;
-                }
-                if (crop.y + height > rect.height) {
-                    height = crop.height;
-                }
-
-                this.onChange({
-                    crop: {
-                        ...crop,
-                        width,
-                        height,
-                    },
-                });
             }
+            else if (dragged === 2) {
+                nextCrop.y = rawY < 0 ? 0 : rawY;
+
+                nextCrop.width = rawX - crop.x;
+                nextCrop. height = crop.height - (nextCrop.y - crop.y);
+
+                if (nextCrop.width < 50) {
+                    nextCrop.width = crop.width;
+                }
+                if (crop.x + nextCrop.width > rect.width) {
+                    nextCrop.width = crop.width;
+                }
+                if (nextCrop.height < 50) {
+                    nextCrop.y = crop.y;
+                    nextCrop.height = crop.height;
+                }
+
+                // растягиваем вправо
+                const diffWidth = crop.width - nextCrop.width;
+
+                if (diffWidth > 0) {
+                    if (nextImage.height >= rect.height) {
+                        const zoom = nextCrop.width / nextImage.width;
+                        const imageHeight = nextImage.height * zoom;
+
+                        if (imageHeight >= rect.height) {
+                            nextImage.width = nextImage.width * zoom;
+                            nextImage.height = imageHeight;
+                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
+                        }
+                    }
+                }
+                else {
+                    if (nextImage.height >= rect.height) {
+                        const zoom = nextCrop.width / nextImage.width;
+                        const imageHeight = nextImage.height * zoom;
+
+                        if (imageHeight >= rect.height) {
+                            nextImage.width = nextImage.width * zoom;
+                            nextImage.height = imageHeight;
+                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
+                        }
+                    }
+                }
+            }
+            else if (dragged === 3) {
+                nextCrop. x = rawX < 0 ? 0 : rawX;
+
+                nextCrop. width = crop.width - (nextCrop.x - crop.x);
+                nextCrop. height = rawY - crop.y;
+
+                if (nextCrop.width < 50) {
+                    nextCrop.x = crop.x;
+                    nextCrop.width = crop.width;
+                }
+                if (nextCrop.height < 50) {
+                    nextCrop.height = crop.height;
+                }
+                if (crop.y + nextCrop.height > rect.height) {
+                    nextCrop.height = crop.height;
+                }
+            }
+            else if (dragged === 4) {
+                nextCrop. width = rawX - crop.x;
+                nextCrop. height = rawY - crop.y;
+
+                if (nextCrop.width < 50) {
+                    nextCrop.width = crop.width;
+                }
+                if (crop.x + nextCrop.width > rect.width) {
+                    nextCrop.width = crop.width;
+                }
+                if (nextCrop.height < 50) {
+                    nextCrop.height = crop.height;
+                }
+                if (crop.y + nextCrop.height > rect.height) {
+                    nextCrop.height = crop.height;
+                }
+            }
+
+            this.onChange({
+                image: nextImage,
+                crop: nextCrop,
+            })
         }
     };
 
