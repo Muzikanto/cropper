@@ -5,6 +5,8 @@ import withStyles from "@material-ui/core/styles/withStyles";
 import {WithStyles} from "@material-ui/styles";
 import Button from "@material-ui/core/Button";
 
+// https://pqina.nl/doka/?ref=filepond#features
+
 const styles = () => ({
     root: {
         boxSizing: 'border-box',
@@ -280,49 +282,52 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 }
             }
 
-            const defaultZoom = rect.height / this.image.height;
-            const rectWidth = rect.height * this.state.zoom;
-            const rectHeight = Math.round(rect.height * (this.state.zoom / defaultZoom) * 1000) / 1000;
-
-            const diffX = crop.x - nextCrop.x;
-            const diffY = crop.y - nextCrop.y;
-
             // TODO менять x если выступает сбоку по ширине
 
-            // растягиваем по диалогали
-            if (diffX > 0) {
-                if (image.height >= rectHeight) {
-                    const lZoom = nextCrop.width / nextImage.width;
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
+            // const defaultZoom = rect.height / this.image.height;
+            //
+            // const rectWidth = rect.height * this.state.zoom;
+            // const rectHeight = Math.round(rect.height * (this.state.zoom / defaultZoom) * 1000) / 1000;
+            //
+            // const diffX = crop.x - nextCrop.x;
+            // const diffY = crop.y - nextCrop.y;
 
-                    if (imageHeight > rectHeight) {
-                        nextImage.width = imageWidth;
-                        nextImage.height = imageHeight;
-                        nextImage.x = nextImage.x - (imageWidth - image.width);
-                        nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
-                    } else {
-                        // nextImage.x = nextCrop.x;
-                        // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
-                    }
-                }
-            } else {
-                if (image.height >= rectHeight) {
-                    const lZoom = nextCrop.width / nextImage.width;
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
-
-                    if (imageHeight > rectHeight) {
-                        nextImage.width = imageWidth;
-                        nextImage.height = imageHeight;
-                        // nextImage.x = nextImage.x;
-                        nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
-                    } else {
-                        // nextImage.x = nextCrop.x;
-                        // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
-                    }
-                }
-            }
+            // // растягиваем по диалогали
+            // if (diffX > 0) {
+            //     if (image.height >= rectHeight) {
+            //         const lZoom = nextCrop.width / nextImage.width;
+            //         const imageWidth = nextImage.width * lZoom;
+            //         const imageHeight = nextImage.height * lZoom;
+            //
+            //         if (imageHeight > rectHeight) {
+            //             nextImage.width = imageWidth;
+            //             nextImage.height = imageHeight;
+            //             nextImage.x = nextImage.x - (imageWidth - image.width);
+            //             nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
+            //         } else {
+            //             // nextImage.x = nextCrop.x;
+            //             // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
+            //         }
+            //     }
+            // }
+            // // сжимаем по диагонали
+            // else {
+            //     if (image.height >= rectHeight) {
+            //         const lZoom = nextCrop.width / nextImage.width;
+            //         const imageWidth = nextImage.width * lZoom;
+            //         const imageHeight = nextImage.height * lZoom;
+            //
+            //         if (imageHeight > rectHeight) {
+            //             nextImage.width = imageWidth;
+            //             nextImage.height = imageHeight;
+            //             nextImage.x = nextCrop.x;
+            //             nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
+            //         } else {
+            //             // nextImage.x = nextCrop.x;
+            //             // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
+            //         }
+            //     }
+            // }
 
             this.onChange({
                 image: nextImage,
