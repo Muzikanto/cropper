@@ -3,6 +3,7 @@ import {Box} from "@material-ui/core";
 import Toolbar from "@material-ui/core/Toolbar";
 import withStyles from "@material-ui/core/styles/withStyles";
 import {WithStyles} from "@material-ui/styles";
+import Button from "@material-ui/core/Button";
 
 const styles = () => ({
     root: {
@@ -91,60 +92,74 @@ class Cropper extends React.Component<CropperProps, CropperState> {
             x: 0, y: 0,
             width: 296, height: 296,
         },
-        zoom: 1.2,
+        zoom: 1,
     };
 
     protected onChange = (state: Partial<CropperState>) => {
-        this.setState({...this.state, ...state});
+        this.setState({...this.state, ...state})
+    }
+
+    protected getDefaultConfig = () => {
+        if (this.cropArea && this.image) {
+            const image = this.image;
+            const rect = this.cropArea.getBoundingClientRect();
+
+            const zoom = rect.height / image.height;
+            const width = image.width * zoom;
+            const height = image.height * zoom;
+            const x = (rect.width / 2) - width / 2;
+            const y = (rect.height / 2) - height / 2;
+
+            return {
+                crop: {
+                    x,
+                    y: 0,
+                    width,
+                    height: 296,
+                },
+                image: {
+                    x,
+                    y,
+                    width,
+                    height,
+                },
+                zoom,
+            };
+        }
+
+        return this.state;
+    }
+
+    protected refreshConfig = () => {
+        const config = this.getDefaultConfig();
+
+        this.onChange(config);
     }
 
     public componentDidMount(): void {
-        const {crop} = this.state;
-
-        document.addEventListener('mousemove', this.onMouseMove);
-        document.addEventListener('mouseup', this.onMouseUp);
-
-        if (this.cropGrid) {
+        if (this.cropArea && this.canvas && this.cropGrid) {
+            document.addEventListener('mousemove', this.onMouseMove);
+            document.addEventListener('mouseup', this.onMouseUp);
             this.cropGrid.addEventListener('wheel', this.onMouseWheel);
-        }
 
-        if (this.cropArea) {
-            const rect = this.cropArea.getBoundingClientRect();
+            // @ts-ignore
+            const ctx = this.canvas.getContext('2d');
+            this.ctx = ctx;
 
-            if (this.canvas) {
-                const image = new Image();
-                image.src = this.props.src;
-                this.image = image;
+            const image = new Image();
+            image.src = this.props.src;
+            this.image = image;
 
-                image.onload = () => {
-                    // @ts-ignore
-                    const ctx = this.canvas.getContext('2d');
-                    this.ctx = ctx;
+            image.onload = () => {
+                const config = this.getDefaultConfig();
 
-                    const zoom = crop.height / image.height;
-                    const width = image.width * zoom;
-                    const height = image.height * zoom;
-                    const x = (rect.width / 2) - width / 2;
-                    const y = (rect.height / 2) - height / 2;
+                this.onChange(config);
 
-                    // const y = crop.y;
-
-                    this.onChange({
-                        crop: {
-                            ...this.state.crop,
-                            x,
-                            width,
-                        },
-                        image: {
-                            ...this.state.crop,
-                            x,
-                            y,
-                            width,
-                            height,
-                        },
-                    });
-                };
-            }
+                const t = localStorage.getItem('test');
+                if (t) {
+                    this.onChange(JSON.parse(t));
+                }
+            };
         }
     }
 
@@ -169,15 +184,12 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         if (this.ctx && this.image && this.canvas) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-            const zoomedWidth = image.width * this.state.zoom;
-            const zoomedHeight = image.height * this.state.zoom;
-
             this.ctx.drawImage(
                 this.image,
                 image.x + 24,
                 image.y + 152,
-                image.width * this.state.zoom,
-                image.height * this.state.zoom,
+                image.width,
+                image.height,
             );
         }
     }
@@ -189,7 +201,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         this.onChange({...this.state, dragged: null});
     };
     protected onMouseMove = (e: any) => {
-        const {dragged, crop, image} = this.state;
+        const {dragged, crop, image, zoom} = this.state;
 
         if (dragged && this.cropArea && this.image) {
             const rect = this.cropArea.getBoundingClientRect();
@@ -215,35 +227,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     nextCrop.y = crop.y;
                     nextCrop.height = crop.height;
                 }
-
-                // растягиваем влево
-                const diffX = crop.x - nextCrop.x;
-                if (diffX > 0) {
-                    if (nextImage.height >= rect.height) {
-                        const zoom = nextCrop.width / nextImage.width;
-                        const imageHeight = nextImage.height * zoom;
-
-                        if (imageHeight >= rect.height) {
-                            nextImage.width = nextImage.width * zoom;
-                            nextImage.height = imageHeight;
-                            nextImage.x = nextCrop.x;
-                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
-                        }
-                    }
-                } else {
-                    if (nextImage.height >= rect.height) {
-                        const zoom = nextCrop.width / nextImage.width;
-                        const imageHeight = nextImage.height * zoom;
-
-                        if (imageHeight >= rect.height) {
-                            nextImage.width = nextImage.width * zoom;
-                            nextImage.height = imageHeight;
-                            nextImage.x = nextCrop.x;
-                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
-                        }
-                    }
-                }
-            } else if (dragged === 2) {
+            }
+            else if (dragged === 2) {
                 nextCrop.y = rawY < 0 ? 0 : rawY;
 
                 nextCrop.width = rawX - crop.x;
@@ -259,34 +244,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     nextCrop.y = crop.y;
                     nextCrop.height = crop.height;
                 }
-
-                // растягиваем вправо
-                const diffWidth = crop.width - nextCrop.width;
-
-                if (diffWidth > 0) {
-                    if (nextImage.height >= rect.height) {
-                        const zoom = nextCrop.width / nextImage.width;
-                        const imageHeight = nextImage.height * zoom;
-
-                        if (imageHeight >= rect.height) {
-                            nextImage.width = nextImage.width * zoom;
-                            nextImage.height = imageHeight;
-                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
-                        }
-                    }
-                } else {
-                    if (nextImage.height >= rect.height) {
-                        const zoom = nextCrop.width / nextImage.width;
-                        const imageHeight = nextImage.height * zoom;
-
-                        if (imageHeight >= rect.height) {
-                            nextImage.width = nextImage.width * zoom;
-                            nextImage.height = imageHeight;
-                            nextImage.y = nextImage.y - (nextImage.height - image.height) / 2;
-                        }
-                    }
-                }
-            } else if (dragged === 3) {
+            }
+            else if (dragged === 3) {
                 nextCrop.x = rawX < 0 ? 0 : rawX;
 
                 nextCrop.width = crop.width - (nextCrop.x - crop.x);
@@ -302,7 +261,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 if (crop.y + nextCrop.height > rect.height) {
                     nextCrop.height = crop.height;
                 }
-            } else if (dragged === 4) {
+            }
+            else if (dragged === 4) {
                 nextCrop.width = rawX - crop.x;
                 nextCrop.height = rawY - crop.y;
 
@@ -317,6 +277,50 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 }
                 if (crop.y + nextCrop.height > rect.height) {
                     nextCrop.height = crop.height;
+                }
+            }
+
+            const defaultZoom = rect.height / this.image.height;
+            const rectWidth = rect.height * this.state.zoom;
+            const rectHeight = Math.round(rect.height * (this.state.zoom / defaultZoom) * 1000) / 1000;
+
+            const diffX = crop.x - nextCrop.x;
+            const diffY = crop.y - nextCrop.y;
+
+            // TODO менять x если выступает сбоку по ширине
+
+            // растягиваем по диалогали
+            if (diffX > 0) {
+                if (image.height >= rectHeight) {
+                    const lZoom = nextCrop.width / nextImage.width;
+                    const imageWidth = nextImage.width * lZoom;
+                    const imageHeight = nextImage.height * lZoom;
+
+                    if (imageHeight > rectHeight) {
+                        nextImage.width = imageWidth;
+                        nextImage.height = imageHeight;
+                        nextImage.x = nextImage.x - (imageWidth - image.width);
+                        nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
+                    } else {
+                        // nextImage.x = nextCrop.x;
+                        // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
+                    }
+                }
+            } else {
+                if (image.height >= rectHeight) {
+                    const lZoom = nextCrop.width / nextImage.width;
+                    const imageWidth = nextImage.width * lZoom;
+                    const imageHeight = nextImage.height * lZoom;
+
+                    if (imageHeight > rectHeight) {
+                        nextImage.width = imageWidth;
+                        nextImage.height = imageHeight;
+                        // nextImage.x = nextImage.x;
+                        nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
+                    } else {
+                        // nextImage.x = nextCrop.x;
+                        // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
+                    }
                 }
             }
 
@@ -344,7 +348,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
         return {
             x, y,
-            width, height,
+            width: Math.round(width * 1000) / 1000,
+            height: Math.round(height * 1000) / 1000,
         };
     }
 
@@ -355,13 +360,13 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         const {image, crop} = this.state;
 
         if (this.image && this.cropArea) {
+            const rect = this.cropArea.getBoundingClientRect();
+
             const deltaY = e.deltaY;
-            const lastZoom = image.height / this.image.height;
-            let zoom = lastZoom - (deltaY / 5000);
+            const prevZoom = this.state.zoom;
+            let zoom = prevZoom - (deltaY / 5000);
 
             const nextImage = {...image};
-
-            // const rect = this.cropArea.getBoundingClientRect();
 
             if (deltaY < 0) {
                 // инкремент
@@ -379,13 +384,16 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     zoom = crop.height / this.image.height;
                 }
 
+                const nextImageCrop = this.zoomTo(this.image, image, crop, zoom);
+
                 Object.assign(
                     nextImage,
-                    this.zoomTo(this.image, image, crop, zoom),
+                    nextImageCrop,
                 );
 
-                const topDiff = crop.y - nextImage.y;
-                const leftDiff = crop.x - nextImage.x;
+                const topDiff = crop.y - image.y;
+                const leftDiff = crop.x - image.x;
+
                 const rightDiff = (crop.x + crop.width) - (nextImage.x + this.image.width * zoom);
                 const bottomDiff = (crop.y + crop.height) - (nextImage.y + this.image.height * zoom);
 
@@ -451,6 +459,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
             this.onChange({
                 image: nextImage,
+                zoom,
             });
         }
     }
@@ -465,8 +474,19 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 height={528}
                 className={classes.root}
             >
-                <Toolbar style={{height: 76}}>
-                    tools
+                <Toolbar style={{height: 76, zIndex: 1}}>
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            this.refreshConfig();
+                        }}
+                    >Refresh</Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            localStorage.setItem('test', JSON.stringify(this.state));
+                        }}
+                    >save</Button>
                 </Toolbar>
 
                 <Toolbar style={{height: 72}}>
