@@ -14,7 +14,12 @@ export interface CropManagerState {
     zoom: number;
 }
 
-export type DragItem = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
+export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
+
+export type DraggedData = {
+    type: DragItemType;
+    data: { x: number, y: number; };
+}
 
 class CropManager {
     public canvas: HTMLCanvasElement;
@@ -32,7 +37,7 @@ class CropManager {
         },
         zoom: 1,
     };
-    public dragged: DragItem | null = null;
+    public dragged: DraggedData | null = null;
     public state: CropManagerState = {
         crop: {
             x: 0, y: 0,
@@ -152,181 +157,207 @@ class CropManager {
         const crop = this.state.crop;
 
         if (dragged && this.image) {
-            const rect = this.area.getBoundingClientRect();
+            if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
+                const rect = this.area.getBoundingClientRect();
 
-            const rawX = cursor.x - rect.left;
-            const rawY = cursor.y - rect.top;
+                const rawX = cursor.x - rect.left;
+                const rawY = cursor.y - rect.top;
 
-            const nextImage = {...imageCrop};
-            const nextCrop = {...crop};
-            let zoom = this.state.zoom;
+                const nextImage = {...imageCrop};
+                const nextCrop = {...crop};
+                let zoom = this.state.zoom;
 
-            if (dragged === 'lt') {
-                nextCrop.x = rawX < 0 ? 0 : rawX;
-                nextCrop.y = rawY < 0 ? 0 : rawY;
+                // drag angle
+                if (dragged.type === 'lt') {
+                    nextCrop.x = rawX < 0 ? 0 : rawX;
+                    nextCrop.y = rawY < 0 ? 0 : rawY;
 
-                nextCrop.width = crop.width - (nextCrop.x - crop.x);
-                nextCrop.height = crop.height - (nextCrop.y - crop.y);
+                    nextCrop.width = crop.width - (nextCrop.x - crop.x);
+                    nextCrop.height = crop.height - (nextCrop.y - crop.y);
 
-                if (nextCrop.width < 50) {
-                    nextCrop.x = crop.x;
-                    nextCrop.width = crop.width;
+                    if (nextCrop.width < 50) {
+                        nextCrop.x = crop.x;
+                        nextCrop.width = crop.width;
+                    }
+                    if (nextCrop.height < 50) {
+                        nextCrop.y = crop.y;
+                        nextCrop.height = crop.height;
+                    }
+                } else if (dragged.type === 'rt') {
+                    nextCrop.y = rawY < 0 ? 0 : rawY;
+
+                    nextCrop.width = rawX - crop.x;
+                    nextCrop.height = crop.height - (nextCrop.y - crop.y);
+
+                    if (nextCrop.width < 50) {
+                        nextCrop.width = crop.width;
+                    }
+                    if (crop.x + nextCrop.width > rect.width) {
+                        nextCrop.width = crop.width;
+                    }
+                    if (nextCrop.height < 50) {
+                        nextCrop.y = crop.y;
+                        nextCrop.height = crop.height;
+                    }
+                } else if (dragged.type === 'lb') {
+                    nextCrop.x = rawX < 0 ? 0 : rawX;
+
+                    nextCrop.width = crop.width - (nextCrop.x - crop.x);
+                    nextCrop.height = rawY - crop.y;
+
+                    if (nextCrop.width < 50) {
+                        nextCrop.x = crop.x;
+                        nextCrop.width = crop.width;
+                    }
+                    if (nextCrop.height < 50) {
+                        nextCrop.height = crop.height;
+                    }
+                    if (crop.y + nextCrop.height > rect.height) {
+                        nextCrop.height = crop.height;
+                    }
+                } else if (dragged.type === 'rb') {
+                    nextCrop.width = rawX - crop.x;
+                    nextCrop.height = rawY - crop.y;
+
+                    if (nextCrop.width < 50) {
+                        nextCrop.width = crop.width;
+                    }
+                    if (crop.x + nextCrop.width > rect.width) {
+                        nextCrop.width = crop.width;
+                    }
+                    if (nextCrop.height < 50) {
+                        nextCrop.height = crop.height;
+                    }
+                    if (crop.y + nextCrop.height > rect.height) {
+                        nextCrop.height = crop.height;
+                    }
                 }
-                if (nextCrop.height < 50) {
-                    nextCrop.y = crop.y;
-                    nextCrop.height = crop.height;
-                }
-            } else if (dragged === 'rt') {
-                nextCrop.y = rawY < 0 ? 0 : rawY;
+                // -----------
 
-                nextCrop.width = rawX - crop.x;
-                nextCrop.height = crop.height - (nextCrop.y - crop.y);
+                // scale
+                const defaultZoom = rect.height / this.image.height;
 
-                if (nextCrop.width < 50) {
-                    nextCrop.width = crop.width;
-                }
-                if (crop.x + nextCrop.width > rect.width) {
-                    nextCrop.width = crop.width;
-                }
-                if (nextCrop.height < 50) {
-                    nextCrop.y = crop.y;
-                    nextCrop.height = crop.height;
-                }
-            } else if (dragged === 'lb') {
-                nextCrop.x = rawX < 0 ? 0 : rawX;
+                const rectWidth = this.round(this.image.width * this.defaulState.zoom * (this.state.zoom / defaultZoom));
+                const rectHeight = this.round(this.image.height * this.defaulState.zoom * (this.state.zoom / defaultZoom));
 
-                nextCrop.width = crop.width - (nextCrop.x - crop.x);
-                nextCrop.height = rawY - crop.y;
+                const imageWidth = this.round(this.image.width * this.state.zoom);
+                const imageHeight = this.round(this.image.height * this.state.zoom);
 
-                if (nextCrop.width < 50) {
-                    nextCrop.x = crop.x;
-                    nextCrop.width = crop.width;
-                }
-                if (nextCrop.height < 50) {
-                    nextCrop.height = crop.height;
-                }
-                if (crop.y + nextCrop.height > rect.height) {
-                    nextCrop.height = crop.height;
-                }
-            } else if (dragged === 'rb') {
-                nextCrop.width = rawX - crop.x;
-                nextCrop.height = rawY - crop.y;
+                const diffX = crop.x - nextCrop.x || crop.width - nextCrop.width;
+                const diffY = crop.y - nextCrop.y || crop.height - nextCrop.height;
 
-                if (nextCrop.width < 50) {
-                    nextCrop.width = crop.width;
-                }
-                if (crop.x + nextCrop.width > rect.width) {
-                    nextCrop.width = crop.width;
-                }
-                if (nextCrop.height < 50) {
-                    nextCrop.height = crop.height;
-                }
-                if (crop.y + nextCrop.height > rect.height) {
-                    nextCrop.height = crop.height;
-                }
-            }
+                if (diffX > 0) {
+                    if (imageHeight >= rectHeight) {
+                        const lWZoom = nextCrop.width / this.image.width;
+                        const lHZoom = nextCrop.height / this.image.height;
+                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-            const defaultZoom = rect.height / this.image.height;
+                        const nextImageHeight = this.image.height * nextZoom;
 
-            const rectWidth = this.round(this.image.width * this.defaulState.zoom * (this.state.zoom / defaultZoom));
-            const rectHeight = this.round(this.image.height * this.defaulState.zoom * (this.state.zoom / defaultZoom));
-
-            const imageWidth = this.round(this.image.width * this.state.zoom);
-            const imageHeight = this.round(this.image.height * this.state.zoom);
-
-            const diffX = crop.x - nextCrop.x || crop.width - nextCrop.width;
-            const diffY = crop.y - nextCrop.y || crop.height - nextCrop.height;
-
-            if (diffX > 0) {
-                if (imageHeight >= rectHeight) {
-                    const lWZoom = nextCrop.width / this.image.width;
-                    const lHZoom = nextCrop.height / this.image.height;
-                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                    const nextImageHeight = this.image.height * nextZoom;
-
-                    if (nextCrop.width < imageWidth) {
-                        if (nextCrop.x < nextImage.x) {
-                            nextImage.x = nextImage.x + (nextCrop.x - crop.x);
+                        if (nextCrop.width < imageWidth) {
+                            if (nextCrop.x < nextImage.x) {
+                                nextImage.x = nextImage.x + (nextCrop.x - crop.x);
+                            }
+                        } else {
+                            if (nextImageHeight > rectHeight) {
+                                zoom = nextZoom;
+                                nextImage.x = nextCrop.x;
+                                nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
+                            }
                         }
-                    } else {
-                        if (nextImageHeight > rectHeight) {
-                            zoom = nextZoom;
-                            nextImage.x = nextCrop.x;
-                            nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
+                    }
+                } else if (diffX < 0) {
+                    if (imageHeight >= rectHeight) {
+                        const lWZoom = nextCrop.width / this.image.width;
+                        const lHZoom = nextCrop.height / this.image.height;
+                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+
+                        const nextImageHeight = this.image.height * nextZoom;
+
+                        if (nextCrop.width < imageWidth) {
+                            if (nextCrop.x + nextCrop.width > nextImage.x + imageWidth) {
+                                nextImage.x = nextImage.x + (nextCrop.width - crop.width);
+                            }
+                        } else {
+                            if (nextImageHeight > rectHeight) {
+                                zoom = nextZoom;
+                                nextImage.x = nextCrop.x;
+                                nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
+                            }
                         }
                     }
                 }
-            }
-            else if (diffX < 0) {
-                if (imageHeight >= rectHeight) {
-                    const lWZoom = nextCrop.width / this.image.width;
-                    const lHZoom = nextCrop.height / this.image.height;
-                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                    const nextImageHeight = this.image.height * nextZoom;
+                if (diffY > 0) {
+                    if (imageWidth >= rectWidth) {
+                        const lWZoom = nextCrop.width / this.image.width;
+                        const lHZoom = nextCrop.height / this.image.height;
+                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                    if (nextCrop.width < imageWidth) {
-                        if (nextCrop.x + nextCrop.width > nextImage.x + imageWidth) {
-                            nextImage.x = nextImage.x + (nextCrop.width - crop.width);
+                        const nextImageWidth = this.image.width * nextZoom;
+                        const nextImageHeight = this.image.height * nextZoom;
+
+                        if (nextCrop.height < imageHeight) {
+                            if (nextCrop.y < nextImage.y) {
+                                nextImage.y = nextCrop.y;
+                            }
+                        } else {
+                            if (nextImageWidth > rectWidth) {
+                                nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
+                                nextImage.y = nextImage.y - (nextImageHeight - imageHeight);
+                            }
                         }
-                    } else {
-                        if (nextImageHeight > rectHeight) {
-                            zoom = nextZoom;
-                            nextImage.x = nextCrop.x;
-                            nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
+                    }
+                } else {
+                    if (imageWidth >= rectWidth) {
+                        const lWZoom = nextCrop.width / this.image.width;
+                        const lHZoom = nextCrop.height / this.image.height;
+                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+
+                        const nextImageWidth = this.image.width * nextZoom;
+
+                        if (nextCrop.height < imageHeight) {
+                            if (nextCrop.y + nextCrop.height > nextImage.y + imageHeight) {
+                                nextImage.y = nextImage.y - (crop.height - nextCrop.height);
+                            }
+                        } else {
+                            if (imageWidth > rectWidth) {
+                                nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
+                                nextImage.y = nextCrop.y;
+                            }
                         }
                     }
                 }
-            }
+                // -----------
 
-            if (diffY > 0) {
-                if (imageWidth >= rectWidth) {
-                    const lWZoom = nextCrop.width / this.image.width;
-                    const lHZoom = nextCrop.height / this.image.height;
-                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+                this.changeState({
+                    image: nextImage,
+                    crop: nextCrop,
+                    zoom,
+                });
+            } else {
+                if (dragged.type === 'image') {
+                    const nextImage = {...this.state.image};
 
-                    const nextImageWidth = this.image.width * nextZoom;
-                    const nextImageHeight = this.image.height * nextZoom;
+                    const diffX = cursor.x - dragged.data.x;
+                    const diffY = cursor.y - dragged.data.y;
 
-                    if (nextCrop.height < imageHeight) {
-                        if (nextCrop.y < nextImage.y) {
-                            nextImage.y = nextCrop.y;
-                        }
-                    } else {
-                        if (nextImageWidth > rectWidth) {
-                            nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
-                            nextImage.y = nextImage.y - (nextImageHeight - imageHeight);
-                        }
+                    const nextX = nextImage.x + diffX;
+                    const nextY = nextImage.y + diffY;
+
+                    if (nextX <= crop.x && nextX + this.image.width * this.state.zoom > (crop.x + crop.width)) {
+                        nextImage.x = nextX;
                     }
+                    if (nextY <= crop.y && nextY + this.image.height * this.state.zoom > (crop.y + crop.height)) {
+                        nextImage.y = nextY;
+                    }
+
+                    this.dragged!.data = cursor;
+                    this.changeState({
+                        image: nextImage,
+                    });
                 }
             }
-            else {
-                if (imageWidth >= rectWidth) {
-                    const lWZoom = nextCrop.width / this.image.width;
-                    const lHZoom = nextCrop.height / this.image.height;
-                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                    const nextImageWidth = this.image.width * nextZoom;
-
-                    if (nextCrop.height < imageHeight) {
-                        if (nextCrop.y + nextCrop.height > nextImage.y + imageHeight) {
-                            nextImage.y = nextImage.y - (crop.height - nextCrop.height);
-                        }
-                    } else {
-                        if (imageWidth > rectWidth) {
-                            nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
-                            nextImage.y = nextCrop.y;
-                        }
-                    }
-                }
-            }
-
-            this.changeState({
-                image: nextImage,
-                crop: nextCrop,
-                zoom,
-            });
         }
 
         return null;
@@ -447,8 +478,8 @@ class CropManager {
         }
     }
 
-    public setDragged = (drag: DragItem | null) => {
-        this.dragged = drag;
+    public setDragged = (type: DragItemType, data: { x: number, y: number; }) => {
+        this.dragged = {type, data};
     }
 
     public clearDragged = () => {

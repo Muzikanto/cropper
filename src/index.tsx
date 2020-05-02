@@ -4,7 +4,7 @@ import Toolbar from "@material-ui/core/Toolbar";
 import withStyles from "@material-ui/core/styles/withStyles";
 import {WithStyles} from "@material-ui/styles";
 import Button from "@material-ui/core/Button";
-import CropManager, {Crop, DragItem} from "./CropManager";
+import CropManager, {Crop, DragItemType} from "./CropManager";
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -111,8 +111,11 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         }
     }
 
-    protected onMouseDown = (drag: DragItem) => () => {
-        this.manager!.setDragged(drag);
+    protected onMouseDown = (drag: DragItemType) => (e: any) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.manager!.setDragged(drag, {x: e.clientX, y: e.clientY});
     };
     protected onMouseUp = () => {
         this.manager!.clearDragged();
@@ -173,6 +176,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                             height: crop.height,
                         }}
                         ref={r => this.cropGrid = r}
+                        onMouseDown={this.onMouseDown('image')}
                     >
                         <Box
                             style={{left: 0, top: 0, transform: 'translate(-50%, -50%)'}}
