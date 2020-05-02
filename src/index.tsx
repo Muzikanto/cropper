@@ -4,7 +4,7 @@ import Toolbar from "@material-ui/core/Toolbar";
 import withStyles from "@material-ui/core/styles/withStyles";
 import {WithStyles} from "@material-ui/styles";
 import Button from "@material-ui/core/Button";
-import CropManager from "./CropManager";
+import CropManager, {Crop, DragItem} from "./CropManager";
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -57,15 +57,6 @@ const styles = () => ({
         background: '#f7f7f799',
     },
 } as const);
-
-export interface Crop {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-type DragItem = 1 | 2 | 3 | 4;
 
 export interface CropperProps extends WithStyles<typeof styles> {
     src: string;
@@ -186,28 +177,28 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         <Box
                             style={{left: 0, top: 0, transform: 'translate(-50%, -50%)'}}
                             className={classes.circle}
-                            onMouseDown={this.onMouseDown(1)}
+                            onMouseDown={this.onMouseDown('lt')}
                         >
                             <div className={classes.circleIcon}/>
                         </Box>
                         <Box
                             style={{right: 0, top: 0, transform: 'translate(50%, -50%)'}}
                             className={classes.circle}
-                            onMouseDown={this.onMouseDown(2)}
+                            onMouseDown={this.onMouseDown('rt')}
                         >
                             <div className={classes.circleIcon}/>
                         </Box>
                         <Box
                             style={{left: 0, bottom: 0, transform: 'translate(-50%, 50%)'}}
                             className={classes.circle}
-                            onMouseDown={this.onMouseDown(3)}
+                            onMouseDown={this.onMouseDown('lb')}
                         >
                             <div className={classes.circleIcon}/>
                         </Box>
                         <Box
                             style={{right: 0, bottom: 0, transform: 'translate(50%, 50%)'}}
                             className={classes.circle}
-                            onMouseDown={this.onMouseDown(4)}
+                            onMouseDown={this.onMouseDown('rb')}
                         >
                             <div className={classes.circleIcon}/>
                         </Box>
