@@ -224,51 +224,58 @@ class CropManager {
             const rectWidth = Math.round(this.defaulState.image.width * (this.state.zoom / defaultZoom) * 1000) / 1000;
             const rectHeight = Math.round(this.defaulState.image.height * (this.state.zoom / defaultZoom) * 1000) / 1000;
 
-            const diffX = crop.x - nextCrop.x;
-            const diffY = crop.y - nextCrop.y;
+            const diffX = crop.x - nextCrop.x || crop.width - nextCrop.width;
+            const diffY = crop.y - nextCrop.y || crop.height - nextCrop.height;
 
             // растягиваем по диалогали
-            if (diffX > 0) {
-                if (imageCrop.height >= rectHeight) {
-                    const lZoom = nextCrop.width / nextImage.width;
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
+            // if (diffX > 0) {
+            //     if (imageCrop.height >= rectHeight) {
+            //         const lWZoom = nextCrop.width / nextImage.width;
+            //         const lHZoom = nextCrop.height / nextImage.height;
+            //         const lZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+            //
+            //         const imageWidth = nextImage.width * lZoom;
+            //         const imageHeight = nextImage.height * lZoom;
+            //
+            //         if (nextCrop.width < nextImage.width) {
+            //             if (nextCrop.x < nextImage.x) {
+            //                 nextImage.x = nextImage.x + (nextCrop.x - crop.x);
+            //             }
+            //         }
+            //         else {
+            //             if (imageHeight > rectHeight) {
+            //                 nextImage.width = imageWidth;
+            //                 nextImage.height = imageHeight;
+            //                 nextImage.x = nextCrop.x;
+            //                 nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
+            //             }
+            //         }
+            //     }
+            // }
+            // else if (diffX < 0) {
+            //     if (imageCrop.height >= rectHeight) {
+            //         const lWZoom = nextCrop.width / nextImage.width;
+            //         const lHZoom = nextCrop.height / nextImage.height;
+            //         const lZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+            //
+            //         const imageWidth = nextImage.width * lZoom;
+            //         const imageHeight = nextImage.height * lZoom;
+            //
+            //         if (nextCrop.width < nextImage.width) {
+            //             if (nextCrop.x + nextCrop.width > nextImage.x + nextImage.width) {
+            //                 nextImage.x = nextImage.x + (nextCrop.width - crop.width);
+            //             }
+            //         } else {
+            //             if (imageHeight > rectHeight) {
+            //                 nextImage.width = imageWidth;
+            //                 nextImage.height = imageHeight;
+            //                 nextImage.x = nextCrop.x;
+            //                 nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
+            //             }
+            //         }
+            //     }
+            // }
 
-                    if (imageHeight > rectHeight) {
-                        nextImage.width = imageWidth;
-                        nextImage.height = imageHeight;
-                        nextImage.x = nextImage.x - (imageWidth - imageCrop.width);
-                        nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
-                    } else {
-                        if (nextCrop.x < nextImage.x && nextCrop.width < nextImage.width) {
-                            nextImage.x = nextCrop.x;
-                            // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
-                        }
-                    }
-                }
-            }
-            // сжимаем по диагонали
-            else {
-                if (imageCrop.height >= rectHeight) {
-                    const lZoom = nextCrop.width / nextImage.width;
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
-
-                    if (imageHeight > rectHeight) {
-                        nextImage.width = imageWidth;
-                        nextImage.height = imageHeight;
-                        nextImage.x = nextCrop.x;
-                        nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
-                    } else {
-                        if (nextCrop.x + nextCrop.width > nextImage.x + nextImage.width && nextCrop.width < nextImage.width) {
-                            nextImage.x = nextImage.x + (nextCrop.width - crop.width);
-                            // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
-                        }
-                    }
-                }
-            }
-
-            // растягиваем по вертикали
             if (diffY > 0) {
                 if (imageCrop.width >= rectWidth) {
                     const lZoom = nextCrop.height / nextImage.height;
@@ -287,7 +294,6 @@ class CropManager {
                     }
                 }
             }
-            // сжимаем по вертикали
             else {
                 if (imageCrop.width >= rectWidth) {
                     const lZoom = nextCrop.height / nextImage.height;
@@ -301,7 +307,7 @@ class CropManager {
                         nextImage.y = nextCrop.y;
                     } else {
                         if (nextCrop.y + nextCrop.height > nextImage.y + nextImage.height && nextCrop.height < nextImage.height) {
-                            nextImage.y = nextImage.y - (nextCrop.height - crop.height);
+                            nextImage.y = nextImage.y - (crop.height - nextCrop.height);
                         }
                     }
                 }
