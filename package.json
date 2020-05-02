@@ -31,11 +31,12 @@
     },
     "peerDependencies": {},
     "dependencies": {
-        "react": "16.12.0",
-        "react-dom": "16.12.0",
-        "@types/react": "16.9",
         "@material-ui/core": "4.9.10",
-        "@material-ui/styles": "4.9.10"
+        "@material-ui/icons": "^4.9.1",
+        "@material-ui/styles": "4.9.10",
+        "@types/react": "16.9",
+        "react": "16.12.0",
+        "react-dom": "16.12.0"
     },
     "devDependencies": {
         "babel-preset-react-app": "^9.1.2",

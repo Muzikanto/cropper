@@ -1,10 +1,18 @@
-import React from "react";
-import {Box} from "@material-ui/core";
-import Toolbar from "@material-ui/core/Toolbar";
-import withStyles from "@material-ui/core/styles/withStyles";
-import {WithStyles} from "@material-ui/styles";
-import Button from "@material-ui/core/Button";
-import CropManager, {Crop, DragItemType} from "./CropManager";
+import React from 'react';
+import Box from '@material-ui/core/Box';
+import Toolbar from '@material-ui/core/Toolbar';
+import withStyles from '@material-ui/core/styles/withStyles';
+import {WithStyles} from '@material-ui/styles';
+import Button from '@material-ui/core/Button';
+import Tabs from '@material-ui/core/Tabs';
+import Tab from '@material-ui/core/Tab';
+import IconButton from '@material-ui/core/IconButton';
+import RotateLeftIcon from '@material-ui/icons/RotateLeft';
+import FlipIcon from '@material-ui/icons/Flip';
+import AspectRatioIcon from '@material-ui/icons/AspectRatio';
+import RestoreIcon from '@material-ui/icons/Restore';
+import CropIcon from '@material-ui/icons/Crop';
+import CropManager, {Crop, DragItemType} from './CropManager';
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -16,6 +24,15 @@ const styles = () => ({
         background: 'radial-gradient(#282828, #000000)',
         borderRadius: 10,
         boxShadow: '0 0.65rem 0.5rem -0.5rem rgba(0,0,0,.5), 0 0.75rem 3rem rgba(0,0,0,.5)',
+    },
+    toolbar: {
+        height: 76, zIndex: 1, display: 'flex', justifyContent: 'space-between',
+    },
+    subToolbar: {
+        height: 72, display: 'flex', justifyContent: 'center',
+    },
+    btn: {
+        zIndex: 1, color: 'white', marginLeft: 7, marginRight: 7,
     },
     crop: {
         zIndex: 1,
@@ -64,6 +81,8 @@ export interface CropperProps extends WithStyles<typeof styles> {
 
 export interface CropperState {
     crop: Crop;
+    tab: number;
+    changed: boolean;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -80,6 +99,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
             x: 0,
             y: 0,
         },
+        tab: 0,
+        changed: false,
     }
 
     protected onChange = (state: Partial<CropperState>) => {
@@ -92,7 +113,10 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public componentDidMount(): void {
         if (this.cropArea && this.canvas && this.cropGrid) {
-            this.manager = new CropManager(this.canvas, this.cropArea, (crop) => this.onChange({crop}));
+            this.manager = new CropManager(this.canvas, this.cropArea, ({crop, changed}) => this.onChange({
+                crop,
+                changed
+            }));
 
             document.addEventListener('mousemove', this.onMouseMove);
             document.addEventListener('mouseup', this.onMouseUp);
@@ -135,7 +159,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public render() {
         const {classes} = this.props;
-        const {crop} = this.state;
+        const {crop, tab, changed} = this.state;
 
         return (
             <Box
@@ -143,23 +167,68 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 height={528}
                 className={classes.root}
             >
-                <Toolbar style={{height: 76, zIndex: 1}}>
-                    <Button
-                        variant="contained"
-                        onClick={() => {
-                            this.refreshConfig();
+                <Toolbar className={classes.toolbar}>
+                    {
+                        changed ?
+                            <IconButton
+                                color='inherit'
+                                style={{
+                                    color: 'white', backgroundColor: '#ffffff26',
+                                }}
+                                onClick={() => {
+                                    this.refreshConfig();
+                                }}
+                            >
+                                <RestoreIcon/>
+                            </IconButton> :
+                            <div style={{width: 48, height: 48}}/>
+                    }
+                    <Tabs
+                        value={tab}
+                        onChange={(_, v) => {
+                            if (v === -1) {
+                                this.manager!.save();
+                            } else {
+                                this.onChange({tab: v});
+                            }
                         }}
-                    >Refresh</Button>
+                        textColor='inherit'
+                        style={{color: 'white'}}
+                    >
+                        <Tab label='Crop' icon={<CropIcon/>}/>
+                        <Tab label='Save' value={-1}/>
+                    </Tabs>
                     <Button
-                        variant="contained"
-                        onClick={() => {
-                            this.manager!.save();
-                        }}
-                    >save</Button>
+                        style={{backgroundColor: '#ffd843'}}
+                        variant='contained'
+                    >Done</Button>
                 </Toolbar>
 
-                <Toolbar style={{height: 72}}>
-                    sub tools
+                <Toolbar className={classes.subToolbar}>
+                    <Button
+                        className={classes.btn}
+                        startIcon={<RotateLeftIcon/>}
+                        variant='outlined'
+                        color='inherit'
+                    >Rotate left</Button>
+                    <Button
+                        className={classes.btn}
+                        startIcon={<FlipIcon/>}
+                        variant='outlined'
+                        color='inherit'
+                    >Flip horizontal</Button>
+                    <Button
+                        className={classes.btn}
+                        startIcon={<FlipIcon style={{transform: 'rotate(90deg)'}}/>}
+                        variant='outlined'
+                        color='inherit'
+                    >Flip vertical</Button>
+                    <Button
+                        className={classes.btn}
+                        startIcon={<AspectRatioIcon/>}
+                        variant='outlined'
+                        color='inherit'
+                    >Aspect ratio</Button>
                 </Toolbar>
 
                 <div

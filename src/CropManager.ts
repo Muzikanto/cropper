@@ -12,6 +12,7 @@ export interface CropManagerState {
     crop: Crop;
     image: Pos2d;
     zoom: number;
+    changed: boolean;
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
@@ -36,6 +37,7 @@ class CropManager {
             x: 0, y: 0,
         },
         zoom: 1,
+        changed: false,
     };
     public dragged: DraggedData | null = null;
     public state: CropManagerState = {
@@ -47,10 +49,11 @@ class CropManager {
             x: 0, y: 0,
         },
         zoom: 1,
+        changed: false,
     };
-    public watch: (config: Crop) => void;
+    public watch: (params: {crop: Crop, changed: boolean}) => void;
 
-    constructor(canvas: HTMLCanvasElement, area: HTMLDivElement, watcher: (config: Crop) => void) {
+    constructor(canvas: HTMLCanvasElement, area: HTMLDivElement, watcher: (params: {crop: Crop, changed: boolean}) => void) {
         this.canvas = canvas;
         this.area = area;
         this.watch = watcher;
@@ -61,8 +64,9 @@ class CropManager {
 
     protected changeState = (nextState: Partial<CropManagerState>) => {
         this.state = {...this.state, ...nextState};
-        this.watch(this.state.crop);
+        this.watch({crop: this.state.crop, changed: this.state.changed});
         this.drawImage();
+        this.state.changed = true;
     }
 
     public loadImage = (src: string) => {
@@ -123,6 +127,7 @@ class CropManager {
                     y,
                 },
                 zoom,
+                changed: false,
             };
         }
 
