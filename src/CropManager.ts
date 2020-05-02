@@ -100,53 +100,58 @@ class CropManager {
         const crop = this.state.crop;
         const ctx = this.ctx;
 
+        const horizontalMargin = 24;
+        const topMargin = 152;
+        const bottomMargin = 80;
+
         const zoom = this.state.zoom;
+        const angle = this.state.angle;
+
+        const xMargins: any = {
+            0: horizontalMargin,
+            90: 0,
+            180: horizontalMargin,
+            270: 0,
+        };
+        const yMargins: any = {
+            0: topMargin,
+            90: 0,
+            180: bottomMargin,
+            270: 0
+        };
+
         const x = this.state.image.x + 24;
         const y = this.state.image.y + 152;
         const w = image.width * zoom;
         const h = image.height * zoom;
-        const angle = this.state.angle;
+
+        const cropLeft = crop.x + horizontalMargin;
+        const cropRight = cropLeft + crop.width;
+        const cropTop = crop.y + topMargin;
+        const cropBottom = cropTop + crop.height;
+
+        const translateX = this.canvas.width / 2;
+        const translateY = this.canvas.height / 2;
 
         // clear canvas
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
         ctx.save();
 
+        // set center of canvas
+        ctx.translate(translateX, translateY);
+        ctx.rotate(angle * Math.PI / 180);
+
         // draw image
-        // this.ctx.drawImage(
-        //     image,
-        //     this.state.image.x + 24,
-        //     this.state.image.y + 152,
-        //     image.width * this.state.zoom,
-        //     image.height * this.state.zoom,
-        // );
-
-        // ---------------------------------
-        // ctx.setTransform(scale, 0, 0, scale, x, y); // sets scale and origin
-        // ctx.rotate(rotation);
-        // ctx.drawImage(image, -cx, -cy);
-        // // this.ctx.rotate(0 * Math.PI / 180);
-        //
-
-        ctx.translate(x+w/2, y+h/2);
-        ctx.rotate(angle * Math.PI/180.0);
-        ctx.translate(-x-w/2, -y-h/2);
-        ctx.drawImage(image, x, y, w, h);
-
-        // ---------------------------------
+        ctx.drawImage(image, x - translateX, y - translateY, w, h);
 
         // darken background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.rotate(-angle * Math.PI / 180);
 
-        const cropLeft = crop.x + 24;
-        const cropRight = cropLeft + crop.width;
-        const cropTop = crop.y + 152;
-        const cropBottom = cropTop + crop.height;
-
-        ctx.fillRect(0, 0, cropLeft, this.canvas.height);
-        ctx.fillRect(cropRight, 0, this.canvas.width, this.canvas.height);
-        ctx.fillRect(cropLeft, 0, crop.width, cropTop);
-        ctx.fillRect(cropLeft, cropBottom, crop.width, this.canvas.height);
+        ctx.fillRect(0 - translateX, 0 - translateY, cropLeft, this.canvas.height);
+        ctx.fillRect(cropRight - translateX, 0 - translateY, this.canvas.width, this.canvas.height);
+        ctx.fillRect(cropLeft  - translateX, 0 - translateY, crop.width, cropTop);
+        ctx.fillRect(cropLeft  - translateX, cropBottom - translateY, crop.width, this.canvas.height);
 
         ctx.restore();
     }
@@ -290,24 +295,24 @@ class CropManager {
                 // -----------
 
                 // scale
-                const defaultZoom = rect.height / this.image.height;
+                const defaultZoom = rect.height / imageCrop.height;
 
-                const rectWidth = this.round(this.image.width * this.defaulState.zoom * (this.state.zoom / defaultZoom));
-                const rectHeight = this.round(this.image.height * this.defaulState.zoom * (this.state.zoom / defaultZoom));
+                const rectWidth = this.round(imageCrop.width * this.defaulState.zoom * (this.state.zoom / defaultZoom));
+                const rectHeight = this.round(imageCrop.height * this.defaulState.zoom * (this.state.zoom / defaultZoom));
 
-                const imageWidth = this.round(this.image.width * this.state.zoom);
-                const imageHeight = this.round(this.image.height * this.state.zoom);
+                const imageWidth = this.round(imageCrop.width * this.state.zoom);
+                const imageHeight = this.round(imageCrop.height * this.state.zoom);
 
                 const diffX = crop.x - nextCrop.x || crop.width - nextCrop.width;
                 const diffY = crop.y - nextCrop.y || crop.height - nextCrop.height;
 
                 if (diffX > 0) {
                     if (imageHeight >= rectHeight) {
-                        const lWZoom = nextCrop.width / this.image.width;
-                        const lHZoom = nextCrop.height / this.image.height;
+                        const lWZoom = nextCrop.width / imageCrop.width;
+                        const lHZoom = nextCrop.height / imageCrop.height;
                         const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                        const nextImageHeight = this.image.height * nextZoom;
+                        const nextImageHeight = imageCrop.height * nextZoom;
 
                         if (nextCrop.width < imageWidth) {
                             if (nextCrop.x < nextImage.x) {
@@ -323,11 +328,11 @@ class CropManager {
                     }
                 } else if (diffX < 0) {
                     if (imageHeight >= rectHeight) {
-                        const lWZoom = nextCrop.width / this.image.width;
-                        const lHZoom = nextCrop.height / this.image.height;
+                        const lWZoom = nextCrop.width / imageCrop.width;
+                        const lHZoom = nextCrop.height / imageCrop.height;
                         const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                        const nextImageHeight = this.image.height * nextZoom;
+                        const nextImageHeight = imageCrop.height * nextZoom;
 
                         if (nextCrop.width < imageWidth) {
                             if (nextCrop.x + nextCrop.width > nextImage.x + imageWidth) {
@@ -345,12 +350,12 @@ class CropManager {
 
                 if (diffY > 0) {
                     if (imageWidth >= rectWidth) {
-                        const lWZoom = nextCrop.width / this.image.width;
-                        const lHZoom = nextCrop.height / this.image.height;
+                        const lWZoom = nextCrop.width / imageCrop.width;
+                        const lHZoom = nextCrop.height / imageCrop.height;
                         const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                        const nextImageWidth = this.image.width * nextZoom;
-                        const nextImageHeight = this.image.height * nextZoom;
+                        const nextImageWidth = imageCrop.width * nextZoom;
+                        const nextImageHeight = imageCrop.height * nextZoom;
 
                         if (nextCrop.height < imageHeight) {
                             if (nextCrop.y < nextImage.y) {
@@ -365,11 +370,11 @@ class CropManager {
                     }
                 } else {
                     if (imageWidth >= rectWidth) {
-                        const lWZoom = nextCrop.width / this.image.width;
-                        const lHZoom = nextCrop.height / this.image.height;
+                        const lWZoom = nextCrop.width / imageCrop.width;
+                        const lHZoom = nextCrop.height / imageCrop.height;
                         const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                        const nextImageWidth = this.image.width * nextZoom;
+                        const nextImageWidth = imageCrop.width * nextZoom;
 
                         if (nextCrop.height < imageHeight) {
                             if (nextCrop.y + nextCrop.height > nextImage.y + imageHeight) {
@@ -400,10 +405,10 @@ class CropManager {
                     const nextX = nextImage.x + diffX;
                     const nextY = nextImage.y + diffY;
 
-                    if (nextX <= crop.x && nextX + this.image.width * this.state.zoom > (crop.x + crop.width)) {
+                    if (nextX <= crop.x && nextX + imageCrop.width * this.state.zoom > (crop.x + crop.width)) {
                         nextImage.x = nextX;
                     }
-                    if (nextY <= crop.y && nextY + this.image.height * this.state.zoom > (crop.y + crop.height)) {
+                    if (nextY <= crop.y && nextY + imageCrop.height * this.state.zoom > (crop.y + crop.height)) {
                         nextImage.y = nextY;
                     }
 
@@ -419,7 +424,7 @@ class CropManager {
     }
 
     public zoom = (deltaY: number) => {
-        const image = this.state.image;
+        const imageCrop = this.state.image;
         const crop = this.state.crop;
 
         if (this.image) {
@@ -430,38 +435,38 @@ class CropManager {
 
             if (deltaY < 0) {
                 // инкремент
-                const nextImageCrop = this.zoomTo(this.image, image, crop, zoom);
+                const nextImageCrop = this.zoomTo(this.image, imageCrop, crop, zoom);
 
                 Object.assign(nextImage, nextImageCrop);
             } else {
                 // декремент
 
-                const imageWidth = this.image.width * this.state.zoom;
-                const imageHeight = this.image.height * this.state.zoom;
-                let nextImageWidth = this.image.width * zoom;
-                let nextImageHeight = this.image.height * zoom;
+                const imageWidth = imageCrop.width * this.state.zoom;
+                const imageHeight = imageCrop.height * this.state.zoom;
+                let nextImageWidth = imageCrop.width * zoom;
+                let nextImageHeight = imageCrop.height * zoom;
 
                 // если картинка меньше зума, ставим максимально возможный
                 if (nextImageWidth < crop.width) {
-                    zoom = crop.width / this.image.width;
-                    nextImageWidth = this.image.width * zoom;
-                    nextImageHeight = this.image.height * zoom;
+                    zoom = crop.width / imageCrop.width;
+                    nextImageWidth = imageCrop.width * zoom;
+                    nextImageHeight = imageCrop.height * zoom;
                 }
                 if (nextImageHeight < crop.height) {
-                    zoom = crop.height / this.image.height;
-                    nextImageWidth = this.image.width * zoom;
-                    nextImageHeight = this.image.height * zoom;
+                    zoom = crop.height / imageCrop.height;
+                    nextImageWidth = imageCrop.width * zoom;
+                    nextImageHeight = imageCrop.height * zoom;
                 }
 
-                const nextImageCrop = this.zoomTo(this.image, image, crop, zoom);
+                const nextImageCrop = this.zoomTo(this.image, imageCrop, crop, zoom);
 
                 Object.assign(
                     nextImage,
                     nextImageCrop,
                 );
 
-                const topDiff = crop.y - image.y;
-                const leftDiff = crop.x - image.x;
+                const topDiff = crop.y - imageCrop.y;
+                const leftDiff = crop.x - imageCrop.x;
 
                 const rightDiff = (crop.x + crop.width) - (nextImage.x + imageWidth);
                 const bottomDiff = (crop.y + crop.height) - (nextImage.y + imageHeight);
