@@ -282,14 +282,16 @@ class CropManager {
                     const imageWidth = nextImage.width * lZoom;
                     const imageHeight = nextImage.height * lZoom;
 
-                    if (imageWidth > rectWidth) {
-                        nextImage.width = imageWidth;
-                        nextImage.height = imageHeight;
-                        nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
-                        nextImage.y = nextImage.y - (imageHeight - imageCrop.height);
-                    } else {
-                        if (nextCrop.y < nextImage.y && nextCrop.height < nextImage.height) {
+                    if (nextCrop.height < nextImage.height) {
+                        if (nextCrop.y < nextImage.y) {
                             nextImage.y = nextCrop.y;
+                        }
+                    } else {
+                        if (imageWidth > rectWidth) {
+                            nextImage.width = imageWidth;
+                            nextImage.height = imageHeight;
+                            nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
+                            nextImage.y = nextImage.y - (imageHeight - imageCrop.height);
                         }
                     }
                 }
@@ -300,14 +302,16 @@ class CropManager {
                     const imageWidth = nextImage.width * lZoom;
                     const imageHeight = nextImage.height * lZoom;
 
-                    if (imageWidth > rectWidth) {
-                        nextImage.width = imageWidth;
-                        nextImage.height = imageHeight;
-                        nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
-                        nextImage.y = nextCrop.y;
-                    } else {
-                        if (nextCrop.y + nextCrop.height > nextImage.y + nextImage.height && nextCrop.height < nextImage.height) {
+                    if (nextCrop.height < nextImage.height) {
+                        if (nextCrop.y + nextCrop.height > nextImage.y + nextImage.height) {
                             nextImage.y = nextImage.y - (crop.height - nextCrop.height);
+                        }
+                    } else {
+                        if (imageWidth > rectWidth) {
+                            nextImage.width = imageWidth;
+                            nextImage.height = imageHeight;
+                            nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
+                            nextImage.y = nextCrop.y;
                         }
                     }
                 }
