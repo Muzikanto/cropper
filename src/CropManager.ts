@@ -1,13 +1,16 @@
-export interface Crop {
+export interface Pos2d {
     x: number;
     y: number;
+}
+
+export interface Crop extends Pos2d {
     width: number;
     height: number;
 }
 
 export interface CropManagerState {
     crop: Crop;
-    image: Crop;
+    image: Pos2d;
     zoom: number;
 }
 
@@ -26,7 +29,6 @@ class CropManager {
         },
         image: {
             x: 0, y: 0,
-            width: 296, height: 296,
         },
         zoom: 1,
     };
@@ -38,7 +40,6 @@ class CropManager {
         },
         image: {
             x: 0, y: 0,
-            width: 296, height: 296,
         },
         zoom: 1,
     };
@@ -88,8 +89,8 @@ class CropManager {
                 this.image,
                 this.state.image.x + 24,
                 this.state.image.y + 152,
-                this.state.image.width,
-                this.state.image.height,
+                this.image.width * this.state.zoom,
+                this.image.height * this.state.zoom,
             );
         }
     }
@@ -115,8 +116,6 @@ class CropManager {
                 image: {
                     x,
                     y,
-                    width,
-                    height,
                 },
                 zoom,
             };
@@ -125,25 +124,25 @@ class CropManager {
         return this.defaulState;
     }
 
-    public zoomTo = (img: HTMLImageElement, imageCrop: Crop, crop: Crop, zoom: number): Crop => {
-        const width = imageCrop.width / this.state.zoom * zoom;
-        const height = imageCrop.height / this.state.zoom * zoom;
+    public zoomTo = (img: HTMLImageElement, imageCrop: Pos2d, crop: Crop, zoom: number) => {
+        const prevWidth = this.image!.width * this.state.zoom;
+        const prevHeight = this.image!.height * this.state.zoom;
+        const width = this.image!.width * zoom;
+        const height = this.image!.height * zoom;
 
-        const diffW = width - imageCrop.width;
-        const diffH = height - imageCrop.height;
+        const diffW = width - prevWidth;
+        const diffH = height - prevHeight;
 
         const cropCenterX = (crop.x + crop.width / 2) - imageCrop.x;
-        const xPercent = cropCenterX / imageCrop.width;
+        const xPercent = cropCenterX / prevWidth;
         const cropCenterY = (crop.y + crop.height / 2) - imageCrop.y;
-        const yPercent = cropCenterY / imageCrop.height;
+        const yPercent = cropCenterY / prevHeight;
 
         const x = imageCrop.x - (diffW * xPercent);
         const y = imageCrop.y - (diffH * yPercent);
 
         return {
             x, y,
-            width: Math.round(width * 1000) / 1000,
-            height: Math.round(height * 1000) / 1000,
         };
     }
 
@@ -160,6 +159,7 @@ class CropManager {
 
             const nextImage = {...imageCrop};
             const nextCrop = {...crop};
+            let zoom = this.state.zoom;
 
             if (dragged === 'lt') {
                 nextCrop.x = rawX < 0 ? 0 : rawX;
@@ -228,92 +228,94 @@ class CropManager {
 
             const defaultZoom = rect.height / this.image.height;
 
-            const rectWidth = this.round(this.defaulState.image.width * (this.state.zoom / defaultZoom));
-            const rectHeight = Math.round(this.defaulState.image.height * (this.state.zoom / defaultZoom));
+            const rectWidth = this.round(this.image.width * this.defaulState.zoom * (this.state.zoom / defaultZoom));
+            const rectHeight = this.round(this.image.height * this.defaulState.zoom * (this.state.zoom / defaultZoom));
+
+            const imageWidth = this.round(this.image.width * this.state.zoom);
+            const imageHeight = this.round(this.image.height * this.state.zoom);
 
             const diffX = crop.x - nextCrop.x || crop.width - nextCrop.width;
             const diffY = crop.y - nextCrop.y || crop.height - nextCrop.height;
 
             if (diffX > 0) {
-                if (imageCrop.height >= rectHeight) {
-                    const lWZoom = nextCrop.width / nextImage.width;
-                    const lHZoom = nextCrop.height / nextImage.height;
-                    const lZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+                if (imageHeight >= rectHeight) {
+                    const lWZoom = nextCrop.width / this.image.width;
+                    const lHZoom = nextCrop.height / this.image.height;
+                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
+                    const nextImageHeight = this.image.height * nextZoom;
 
-                    if (nextCrop.width < nextImage.width) {
+                    if (nextCrop.width < imageWidth) {
                         if (nextCrop.x < nextImage.x) {
                             nextImage.x = nextImage.x + (nextCrop.x - crop.x);
                         }
                     } else {
-                        if (imageHeight > rectHeight) {
-                            nextImage.width = imageWidth;
-                            nextImage.height = imageHeight;
+                        if (nextImageHeight > rectHeight) {
+                            zoom = nextZoom;
                             nextImage.x = nextCrop.x;
-                            nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
+                            nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
                         }
                     }
                 }
-            } else if (diffX < 0) {
-                if (imageCrop.height >= rectHeight) {
-                    const lWZoom = nextCrop.width / nextImage.width;
-                    const lHZoom = nextCrop.height / nextImage.height;
-                    const lZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+            }
+            else if (diffX < 0) {
+                if (imageHeight >= rectHeight) {
+                    const lWZoom = nextCrop.width / this.image.width;
+                    const lHZoom = nextCrop.height / this.image.height;
+                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
+                    const nextImageHeight = this.image.height * nextZoom;
 
-                    if (nextCrop.width < nextImage.width) {
-                        if (nextCrop.x + nextCrop.width > nextImage.x + nextImage.width) {
+                    if (nextCrop.width < imageWidth) {
+                        if (nextCrop.x + nextCrop.width > nextImage.x + imageWidth) {
                             nextImage.x = nextImage.x + (nextCrop.width - crop.width);
                         }
                     } else {
-                        if (imageHeight > rectHeight) {
-                            nextImage.width = imageWidth;
-                            nextImage.height = imageHeight;
+                        if (nextImageHeight > rectHeight) {
+                            zoom = nextZoom;
                             nextImage.x = nextCrop.x;
-                            nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
+                            nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
                         }
                     }
                 }
             }
 
             if (diffY > 0) {
-                if (imageCrop.width >= rectWidth) {
-                    const lZoom = nextCrop.height / nextImage.height;
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
+                if (imageWidth >= rectWidth) {
+                    const lWZoom = nextCrop.width / this.image.width;
+                    const lHZoom = nextCrop.height / this.image.height;
+                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                    if (nextCrop.height < nextImage.height) {
+                    const nextImageWidth = this.image.width * nextZoom;
+                    const nextImageHeight = this.image.height * nextZoom;
+
+                    if (nextCrop.height < imageHeight) {
                         if (nextCrop.y < nextImage.y) {
                             nextImage.y = nextCrop.y;
                         }
                     } else {
-                        if (imageWidth > rectWidth) {
-                            nextImage.width = imageWidth;
-                            nextImage.height = imageHeight;
-                            nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
-                            nextImage.y = nextImage.y - (imageHeight - imageCrop.height);
+                        if (nextImageWidth > rectWidth) {
+                            nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
+                            nextImage.y = nextImage.y - (nextImageHeight - imageHeight);
                         }
                     }
                 }
-            } else {
-                if (imageCrop.width >= rectWidth) {
-                    const lZoom = nextCrop.height / nextImage.height;
-                    const imageWidth = nextImage.width * lZoom;
-                    const imageHeight = nextImage.height * lZoom;
+            }
+            else {
+                if (imageWidth >= rectWidth) {
+                    const lWZoom = nextCrop.width / this.image.width;
+                    const lHZoom = nextCrop.height / this.image.height;
+                    const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
 
-                    if (nextCrop.height < nextImage.height) {
-                        if (nextCrop.y + nextCrop.height > nextImage.y + nextImage.height) {
+                    const nextImageWidth = this.image.width * nextZoom;
+
+                    if (nextCrop.height < imageHeight) {
+                        if (nextCrop.y + nextCrop.height > nextImage.y + imageHeight) {
                             nextImage.y = nextImage.y - (crop.height - nextCrop.height);
                         }
                     } else {
                         if (imageWidth > rectWidth) {
-                            nextImage.width = imageWidth;
-                            nextImage.height = imageHeight;
-                            nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
+                            nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
                             nextImage.y = nextCrop.y;
                         }
                     }
@@ -323,6 +325,7 @@ class CropManager {
             this.changeState({
                 image: nextImage,
                 crop: nextCrop,
+                zoom,
             });
         }
 
@@ -347,15 +350,21 @@ class CropManager {
             } else {
                 // декремент
 
-                const imageWidth = image.width / this.state.zoom * zoom;
-                const imageHeight = image.height  / this.state.zoom * zoom;
+                const imageWidth = this.image.width * this.state.zoom;
+                const imageHeight = this.image.height * this.state.zoom;
+                let nextImageWidth = this.image.width * zoom;
+                let nextImageHeight = this.image.height * zoom;
 
                 // если картинка меньше зума, ставим максимально возможный
-                if (imageWidth < crop.width) {
-                    zoom = crop.width / (image.width / this.state.zoom);
+                if (nextImageWidth < crop.width) {
+                    zoom = crop.width / this.image.width;
+                    nextImageWidth = this.image.width * zoom;
+                    nextImageHeight = this.image.height * zoom;
                 }
-                if (imageHeight < crop.height) {
-                    zoom = crop.height / (image.height / this.state.zoom);
+                if (nextImageHeight < crop.height) {
+                    zoom = crop.height / this.image.height;
+                    nextImageWidth = this.image.width * zoom;
+                    nextImageHeight = this.image.height * zoom;
                 }
 
                 const nextImageCrop = this.zoomTo(this.image, image, crop, zoom);
@@ -378,7 +387,7 @@ class CropManager {
                 const rt = !left && top;
                 const lb = left && !top;
                 const rb = !left && !top;
-                // console.log(topDiff, bottomDiff, imageHeight, crop.height)
+
                 if (lt) {
                     if (crop.x < nextImage.x) {
                         nextImage.x = crop.x;
@@ -388,7 +397,7 @@ class CropManager {
                     }
                 }
                 if (rt) {
-                    const imageRightX = nextImage.x + nextImage.width;
+                    const imageRightX = nextImage.x + nextImageWidth;
                     const cropRightX = crop.x + crop.width;
 
                     if (cropRightX > imageRightX) {
@@ -399,7 +408,7 @@ class CropManager {
                     }
                 }
                 if (lb) {
-                    const imageBottomY = nextImage.y + nextImage.height;
+                    const imageBottomY = nextImage.y + nextImageHeight;
                     const croBottomY = crop.y + crop.height;
 
                     if (crop.x < nextImage.x) {
@@ -410,9 +419,9 @@ class CropManager {
                     }
                 }
                 if (rb) {
-                    const imageRightX = nextImage.x + nextImage.width;
+                    const imageRightX = nextImage.x + nextImageWidth;
                     const cropRightX = crop.x + crop.width;
-                    const imageBottomY = nextImage.y + nextImage.height;
+                    const imageBottomY = nextImage.y + nextImageHeight;
                     const croBottomY = crop.y + crop.height;
 
                     if (cropRightX > imageRightX) {
@@ -423,10 +432,10 @@ class CropManager {
                     }
                 }
 
-                if (nextImage.width < crop.width) {
+                if (nextImageWidth < crop.width) {
                     return;
                 }
-                if (nextImage.height < crop.height) {
+                if (nextImageHeight < crop.height) {
                     return;
                 }
             }
@@ -436,10 +445,6 @@ class CropManager {
                 zoom,
             });
         }
-    }
-
-    protected bind = () => {
-
     }
 
     public setDragged = (drag: DragItem | null) => {
