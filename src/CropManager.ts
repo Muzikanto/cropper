@@ -10,9 +10,10 @@ export interface Crop extends Pos2d {
 
 export interface CropManagerState {
     crop: Crop;
-    image: Pos2d;
+    image: Crop;
     zoom: number;
     changed: boolean;
+    angle: number;
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
@@ -35,9 +36,11 @@ class CropManager {
         },
         image: {
             x: 0, y: 0,
+            width: 0, height: 0,
         },
         zoom: 1,
         changed: false,
+        angle: 0,
     };
     public dragged: DraggedData | null = null;
     public state: CropManagerState = {
@@ -47,13 +50,15 @@ class CropManager {
         },
         image: {
             x: 0, y: 0,
+            width: 0, height: 0,
         },
         zoom: 1,
         changed: false,
+        angle: 0,
     };
-    public watch: (params: {crop: Crop, changed: boolean}) => void;
+    public watch: (params: { crop: Crop, changed: boolean }) => void;
 
-    constructor(canvas: HTMLCanvasElement, area: HTMLDivElement, watcher: (params: {crop: Crop, changed: boolean}) => void) {
+    constructor(canvas: HTMLCanvasElement, area: HTMLDivElement, watcher: (params: { crop: Crop, changed: boolean }) => void) {
         this.canvas = canvas;
         this.area = area;
         this.watch = watcher;
@@ -93,31 +98,57 @@ class CropManager {
     public drawImage() {
         const image = this.image!;
         const crop = this.state.crop;
+        const ctx = this.ctx;
+
+        const zoom = this.state.zoom;
+        const x = this.state.image.x + 24;
+        const y = this.state.image.y + 152;
+        const w = image.width * zoom;
+        const h = image.height * zoom;
+        const angle = this.state.angle;
 
         // clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        ctx.save();
 
         // draw image
-        this.ctx.drawImage(
-            image,
-            this.state.image.x + 24,
-            this.state.image.y + 152,
-            image.width * this.state.zoom,
-            image.height * this.state.zoom,
-        );
+        // this.ctx.drawImage(
+        //     image,
+        //     this.state.image.x + 24,
+        //     this.state.image.y + 152,
+        //     image.width * this.state.zoom,
+        //     image.height * this.state.zoom,
+        // );
+
+        // ---------------------------------
+        // ctx.setTransform(scale, 0, 0, scale, x, y); // sets scale and origin
+        // ctx.rotate(rotation);
+        // ctx.drawImage(image, -cx, -cy);
+        // // this.ctx.rotate(0 * Math.PI / 180);
+        //
+
+        ctx.translate(x+w/2, y+h/2);
+        ctx.rotate(angle * Math.PI/180.0);
+        ctx.translate(-x-w/2, -y-h/2);
+        ctx.drawImage(image, x, y, w, h);
+
+        // ---------------------------------
 
         // darken background
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
 
         const cropLeft = crop.x + 24;
         const cropRight = cropLeft + crop.width;
         const cropTop = crop.y + 152;
         const cropBottom = cropTop + crop.height;
 
-        this.ctx.fillRect(0, 0, cropLeft, this.canvas.height);
-        this.ctx.fillRect(cropRight, 0, this.canvas.width, this.canvas.height);
-        this.ctx.fillRect(cropLeft, 0, crop.width, cropTop);
-        this.ctx.fillRect(cropLeft, cropBottom, crop.width, this.canvas.height);
+        ctx.fillRect(0, 0, cropLeft, this.canvas.height);
+        ctx.fillRect(cropRight, 0, this.canvas.width, this.canvas.height);
+        ctx.fillRect(cropLeft, 0, crop.width, cropTop);
+        ctx.fillRect(cropLeft, cropBottom, crop.width, this.canvas.height);
+
+        ctx.restore();
     }
 
     public getDefaultConfig = () => {
@@ -141,9 +172,12 @@ class CropManager {
                 image: {
                     x,
                     y,
+                    width: this.image.width,
+                    height: this.image.height,
                 },
                 zoom,
                 changed: false,
+                angle: 0,
             };
         }
 
@@ -517,6 +551,16 @@ class CropManager {
 
     public round = (v: number) => {
         return Math.round(v * 1000) / 1000;
+    }
+
+    public rotate = (angle: number) => {
+        this.changeState({angle});
+    }
+
+    public rotateLeft = () => {
+        const nextAngle = (this.state.angle + 90) % 360;
+
+        this.rotate(nextAngle);
     }
 }
 

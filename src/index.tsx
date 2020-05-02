@@ -216,6 +216,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         startIcon={<RotateLeftIcon/>}
                         variant='outlined'
                         color='inherit'
+                        onClick={() => this.manager!.rotateLeft()}
                     >Rotate left</Button>
                     <Button
                         className={classes.btn}
