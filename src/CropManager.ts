@@ -219,52 +219,93 @@ class CropManager {
                 }
             }
 
-            // TODO менять x если выступает сбоку по ширине
+            const defaultZoom = rect.height / this.image.height;
 
-            // const defaultZoom = rect.height / this.image.height;
-            //
-            // const rectWidth = rect.height * this.state.zoom;
-            // const rectHeight = Math.round(rect.height * (this.state.zoom / defaultZoom) * 1000) / 1000;
-            //
-            // const diffX = crop.x - nextCrop.x;
-            // const diffY = crop.y - nextCrop.y;
+            const rectWidth = Math.round(this.defaulState.image.width * (this.state.zoom / defaultZoom) * 1000) / 1000;
+            const rectHeight = Math.round(this.defaulState.image.height * (this.state.zoom / defaultZoom) * 1000) / 1000;
 
-            // // растягиваем по диалогали
-            // if (diffX > 0) {
-            //     if (image.height >= rectHeight) {
-            //         const lZoom = nextCrop.width / nextImage.width;
-            //         const imageWidth = nextImage.width * lZoom;
-            //         const imageHeight = nextImage.height * lZoom;
-            //
-            //         if (imageHeight > rectHeight) {
-            //             nextImage.width = imageWidth;
-            //             nextImage.height = imageHeight;
-            //             nextImage.x = nextImage.x - (imageWidth - image.width);
-            //             nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
-            //         } else {
-            //             // nextImage.x = nextCrop.x;
-            //             // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
-            //         }
-            //     }
-            // }
-            // // сжимаем по диагонали
-            // else {
-            //     if (image.height >= rectHeight) {
-            //         const lZoom = nextCrop.width / nextImage.width;
-            //         const imageWidth = nextImage.width * lZoom;
-            //         const imageHeight = nextImage.height * lZoom;
-            //
-            //         if (imageHeight > rectHeight) {
-            //             nextImage.width = imageWidth;
-            //             nextImage.height = imageHeight;
-            //             nextImage.x = nextCrop.x;
-            //             nextImage.y = nextImage.y - (imageHeight - image.height) / 2;
-            //         } else {
-            //             // nextImage.x = nextCrop.x;
-            //             // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
-            //         }
-            //     }
-            // }
+            const diffX = crop.x - nextCrop.x;
+            const diffY = crop.y - nextCrop.y;
+
+            // растягиваем по диалогали
+            if (diffX > 0) {
+                if (imageCrop.height >= rectHeight) {
+                    const lZoom = nextCrop.width / nextImage.width;
+                    const imageWidth = nextImage.width * lZoom;
+                    const imageHeight = nextImage.height * lZoom;
+
+                    if (imageHeight > rectHeight) {
+                        nextImage.width = imageWidth;
+                        nextImage.height = imageHeight;
+                        nextImage.x = nextImage.x - (imageWidth - imageCrop.width);
+                        nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
+                    } else {
+                        if (nextCrop.x < nextImage.x && nextCrop.width < nextImage.width) {
+                            nextImage.x = nextCrop.x;
+                            // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
+                        }
+                    }
+                }
+            }
+            // сжимаем по диагонали
+            else {
+                if (imageCrop.height >= rectHeight) {
+                    const lZoom = nextCrop.width / nextImage.width;
+                    const imageWidth = nextImage.width * lZoom;
+                    const imageHeight = nextImage.height * lZoom;
+
+                    if (imageHeight > rectHeight) {
+                        nextImage.width = imageWidth;
+                        nextImage.height = imageHeight;
+                        nextImage.x = nextCrop.x;
+                        nextImage.y = nextImage.y - (imageHeight - imageCrop.height) / 2;
+                    } else {
+                        if (nextCrop.x + nextCrop.width > nextImage.x + nextImage.width && nextCrop.width < nextImage.width) {
+                            nextImage.x = nextImage.x + (nextCrop.width - crop.width);
+                            // nextImage.y = nextCrop.y - (nextImage.height - image.height) / 2;
+                        }
+                    }
+                }
+            }
+
+            // растягиваем по вертикали
+            if (diffY > 0) {
+                if (imageCrop.width >= rectWidth) {
+                    const lZoom = nextCrop.height / nextImage.height;
+                    const imageWidth = nextImage.width * lZoom;
+                    const imageHeight = nextImage.height * lZoom;
+
+                    if (imageWidth > rectWidth) {
+                        nextImage.width = imageWidth;
+                        nextImage.height = imageHeight;
+                        nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
+                        nextImage.y = nextImage.y - (imageHeight - imageCrop.height);
+                    } else {
+                        if (nextCrop.y < nextImage.y && nextCrop.height < nextImage.height) {
+                            nextImage.y = nextCrop.y;
+                        }
+                    }
+                }
+            }
+            // сжимаем по вертикали
+            else {
+                if (imageCrop.width >= rectWidth) {
+                    const lZoom = nextCrop.height / nextImage.height;
+                    const imageWidth = nextImage.width * lZoom;
+                    const imageHeight = nextImage.height * lZoom;
+
+                    if (imageWidth > rectWidth) {
+                        nextImage.width = imageWidth;
+                        nextImage.height = imageHeight;
+                        nextImage.x = nextImage.x - (imageWidth - imageCrop.width) / 2;
+                        nextImage.y = nextCrop.y;
+                    } else {
+                        if (nextCrop.y + nextCrop.height > nextImage.y + nextImage.height && nextCrop.height < nextImage.height) {
+                            nextImage.y = nextImage.y - (nextCrop.height - crop.height);
+                        }
+                    }
+                }
+            }
 
             this.changeState({
                 image: nextImage,
@@ -279,7 +320,7 @@ class CropManager {
         const image = this.state.image;
         const crop = this.state.crop;
 
-        if (this.image && this.area) {
+        if (this.image) {
             const prevZoom = this.state.zoom;
             let zoom = prevZoom - (deltaY / 5000);
 
