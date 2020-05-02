@@ -12,7 +12,9 @@ import FlipIcon from '@material-ui/icons/Flip';
 import AspectRatioIcon from '@material-ui/icons/AspectRatio';
 import RestoreIcon from '@material-ui/icons/Restore';
 import CropIcon from '@material-ui/icons/Crop';
-import CropManager, {Crop, DragItemType} from './CropManager';
+import CropManager, {Crop, CropManagerState, DragItemType} from './CropManager';
+import createStore from "@muzikanto/observable/createStore";
+import StoreConsumer from "@muzikanto/observable/StoreConsumer";
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -21,7 +23,7 @@ const styles = () => ({
         boxSizing: 'border-box',
         // overflow: 'hidden',
         position: 'relative',
-        background: 'radial-gradient(#747171, #000000)',
+        background: 'radial-gradient(#4f4c4c, #000000)',
         borderRadius: 10,
         boxShadow: '0 0.65rem 0.5rem -0.5rem rgba(0,0,0,.5), 0 0.75rem 3rem rgba(0,0,0,.5)',
     },
@@ -86,36 +88,29 @@ export interface CropperProps extends WithStyles<typeof styles> {
 }
 
 export interface CropperState {
-    crop: Crop;
     tab: number;
-    changed: boolean;
-    flipX: boolean;
-    flipY: boolean;
 }
+
+const store = createStore<CropManagerState>({
+    imageCrop: {x: 0, y: 0, width: 0, height: 0},
+    crop: {x: 0, y: 0, width: 0, height: 0},
+    zoom: 1,
+    initialChanged: false,
+    changed: false,
+    lastChanged: null,
+    angle: 0,
+    flipX: false,
+    flipY: false,
+});
 
 class Cropper extends React.Component<CropperProps, CropperState> {
     public cropArea: HTMLDivElement | null = null;
     public cropGrid: HTMLDivElement | null = null;
     public canvas: HTMLCanvasElement | null = null;
 
+    public state = {tab: 0};
+
     protected manager: CropManager | null = null;
-
-    public state: CropperState = {
-        crop: {
-            width: 0,
-            height: 0,
-            x: 0,
-            y: 0,
-        },
-        tab: 0,
-        changed: false,
-        flipX: false,
-        flipY: false,
-    }
-
-    protected onChange = (state: Partial<CropperState>) => {
-        this.setState({...this.state, ...state});
-    }
 
     protected refreshConfig = () => {
         this.manager!.refreshState();
@@ -123,19 +118,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public componentDidMount(): void {
         if (this.cropArea && this.canvas && this.cropGrid) {
-            this.manager = new CropManager(this.canvas, this.cropArea, ({crop, changed, flipX, flipY}) => {
-                if (crop !== this.state.crop ||
-                    this.state.changed !== changed ||
-                    this.state.flipY !== flipY ||
-                    this.state.flipX !== flipX) {
-                    this.onChange({
-                        crop,
-                        changed,
-                        flipX,
-                        flipY,
-                    });
-                }
-            });
+            this.manager = new CropManager(store, this.canvas, this.cropArea);
 
             document.addEventListener('mousemove', this.onMouseMove);
             document.addEventListener('mouseup', this.onMouseUp);
@@ -178,7 +161,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public render() {
         const {classes} = this.props;
-        const {crop, tab, changed, flipX, flipY} = this.state;
+        const {tab} = this.state;
 
         return (
             <Box
@@ -187,28 +170,38 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 className={classes.root}
             >
                 <Toolbar className={classes.toolbar}>
-                    {
-                        changed ?
-                            <IconButton
-                                color='inherit'
-                                style={{
-                                    color: 'white', backgroundColor: '#ffffff26',
-                                }}
-                                onClick={() => {
-                                    this.refreshConfig();
-                                }}
-                            >
-                                <RestoreIcon/>
-                            </IconButton> :
-                            <div style={{width: 48, height: 48}}/>
-                    }
+                    <StoreConsumer store={store} selector={s => s.changed}>
+                        {
+                            (changed: boolean) => {
+                                if (changed) {
+                                    return (
+                                        <IconButton
+                                            color='inherit'
+                                            style={{
+                                                color: 'white', backgroundColor: '#ffffff26',
+                                            }}
+                                            onClick={() => {
+                                                this.refreshConfig();
+                                            }}
+                                        >
+                                            <RestoreIcon/>
+                                        </IconButton>
+                                    );
+                                } else {
+                                    return (
+                                        <div style={{width: 48, height: 48}}/>
+                                    );
+                                }
+                            }
+                        }
+                    </StoreConsumer>
                     <Tabs
                         value={tab}
                         onChange={(_, v) => {
                             if (v === -1) {
                                 this.manager!.save();
                             } else {
-                                this.onChange({tab: v});
+                                this.setState((prevState) => ({...prevState, tab: v}));
                             }
                         }}
                         textColor='inherit'
@@ -231,20 +224,32 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         color='inherit'
                         onClick={() => this.manager!.rotateLeft()}
                     >Rotate left</Button>
-                    <Button
-                        className={classes.btn}
-                        startIcon={<FlipIcon style={{transform: `rotate(${flipX ? 180 : 0}deg)`}}/>}
-                        variant='outlined'
-                        color='inherit'
-                        onClick={() => this.manager!.flipX(!this.state.flipX)}
-                    >Flip horizontal</Button>
-                    <Button
-                        className={classes.btn}
-                        startIcon={<FlipIcon style={{transform: `rotate(${flipY ? 270 : 90}deg)`}}/>}
-                        variant='outlined'
-                        color='inherit'
-                        onClick={() => this.manager!.flipY(!this.state.flipY)}
-                    >Flip vertical</Button>
+                    <StoreConsumer store={store} selector={s => s.flipX}>
+                        {
+                            (flipX: boolean) => (
+                                <Button
+                                    className={classes.btn}
+                                    startIcon={<FlipIcon style={{transform: `rotate(${flipX ? 180 : 0}deg)`}}/>}
+                                    variant='outlined'
+                                    color='inherit'
+                                    onClick={() => this.manager!.flipX()}
+                                >Flip horizontal</Button>
+                            )
+                        }
+                    </StoreConsumer>
+                    <StoreConsumer store={store} selector={s => s.flipY}>
+                        {
+                            (flipY: boolean) => (
+                                <Button
+                                    className={classes.btn}
+                                    startIcon={<FlipIcon style={{transform: `rotate(${flipY ? 270 : 90}deg)`}}/>}
+                                    variant='outlined'
+                                    color='inherit'
+                                    onClick={() => this.manager!.flipY()}
+                                >Flip vertical</Button>
+                            )
+                        }
+                    </StoreConsumer>
                     <Button
                         className={classes.btn}
                         startIcon={<AspectRatioIcon/>}
@@ -253,52 +258,80 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     >Aspect ratio</Button>
                 </Toolbar>
 
-                <div
-                    className={classes.crop}
-                    onMouseUp={this.onMouseUp}
-                    ref={el => this.cropArea = el}
-                >
-                    <div
-                        className={classes.cropGrid}
-                        style={{
-                            left: crop.x,
-                            top: crop.y,
-                            width: crop.width,
-                            height: crop.height,
-                        }}
-                        ref={r => this.cropGrid = r}
-                        onMouseDown={this.onMouseDown('image')}
-                    >
-                        <Box
-                            style={{left: 0, top: 0, transform: 'translate(-50%, -50%)', cursor: 'nwse-resize'}}
-                            className={classes.circle}
-                            onMouseDown={this.onMouseDown('lt')}
-                        >
-                            <div className={classes.circleIcon}/>
-                        </Box>
-                        <Box
-                            style={{right: 0, top: 0, transform: 'translate(50%, -50%)', cursor: 'nesw-resize'}}
-                            className={classes.circle}
-                            onMouseDown={this.onMouseDown('rt')}
-                        >
-                            <div className={classes.circleIcon}/>
-                        </Box>
-                        <Box
-                            style={{left: 0, bottom: 0, transform: 'translate(-50%, 50%)', cursor: 'nesw-resize'}}
-                            className={classes.circle}
-                            onMouseDown={this.onMouseDown('lb')}
-                        >
-                            <div className={classes.circleIcon}/>
-                        </Box>
-                        <Box
-                            style={{right: 0, bottom: 0, transform: 'translate(50%, 50%)', cursor: 'nwse-resize'}}
-                            className={classes.circle}
-                            onMouseDown={this.onMouseDown('rb')}
-                        >
-                            <div className={classes.circleIcon}/>
-                        </Box>
-                    </div>
-                </div>
+                <StoreConsumer store={store} selector={s => s.crop}>
+                    {
+                        (crop: Crop) => {
+                            return (
+                                <div
+                                    className={classes.crop}
+                                    onMouseUp={this.onMouseUp}
+                                    ref={el => this.cropArea = el}
+                                >
+                                    <div
+                                        className={classes.cropGrid}
+                                        style={{
+                                            left: crop.x,
+                                            top: crop.y,
+                                            width: crop.width,
+                                            height: crop.height,
+                                        }}
+                                        ref={r => this.cropGrid = r}
+                                        onMouseDown={this.onMouseDown('image')}
+                                    >
+                                        <Box
+                                            style={{
+                                                left: 0,
+                                                top: 0,
+                                                transform: 'translate(-50%, -50%)',
+                                                cursor: 'nwse-resize'
+                                            }}
+                                            className={classes.circle}
+                                            onMouseDown={this.onMouseDown('lt')}
+                                        >
+                                            <div className={classes.circleIcon}/>
+                                        </Box>
+                                        <Box
+                                            style={{
+                                                right: 0,
+                                                top: 0,
+                                                transform: 'translate(50%, -50%)',
+                                                cursor: 'nesw-resize'
+                                            }}
+                                            className={classes.circle}
+                                            onMouseDown={this.onMouseDown('rt')}
+                                        >
+                                            <div className={classes.circleIcon}/>
+                                        </Box>
+                                        <Box
+                                            style={{
+                                                left: 0,
+                                                bottom: 0,
+                                                transform: 'translate(-50%, 50%)',
+                                                cursor: 'nesw-resize'
+                                            }}
+                                            className={classes.circle}
+                                            onMouseDown={this.onMouseDown('lb')}
+                                        >
+                                            <div className={classes.circleIcon}/>
+                                        </Box>
+                                        <Box
+                                            style={{
+                                                right: 0,
+                                                bottom: 0,
+                                                transform: 'translate(50%, 50%)',
+                                                cursor: 'nwse-resize'
+                                            }}
+                                            className={classes.circle}
+                                            onMouseDown={this.onMouseDown('rb')}
+                                        >
+                                            <div className={classes.circleIcon}/>
+                                        </Box>
+                                    </div>
+                                </div>
+                            );
+                        }
+                    }
+                </StoreConsumer>
 
                 <Box style={{height: 56}}>
                     rotate

@@ -14,10 +14,13 @@ export interface CropManagerState {
     crop: Crop;
     imageCrop: Crop;
     zoom: number;
+    initialChanged: boolean;
     changed: boolean;
+    lastChanged: Date | null;
     angle: number;
     flipX: boolean;
     flipY: boolean;
+    aspectRatio: number | null;
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
@@ -27,68 +30,36 @@ export type DraggedData = {
     data: { x: number, y: number; };
 }
 
-type Watcher = (params: Pick<CropManagerState, 'changed' | 'flipX' | 'flipY' | 'crop'>) => void
-
 class CropManager {
     public canvas: HTMLCanvasElement;
     public ctx: CanvasRenderingContext2D;
     public defaultImage: HTMLImageElement | null = null;
-    public newImage: HTMLImageElement | null = null;
     public area: HTMLDivElement;
 
-    public defaulState: CropManagerState = {
-        crop: {
-            x: 0, y: 0,
-            width: 296, height: 296,
-        },
-        imageCrop: {
-            x: 0, y: 0,
-            width: 0, height: 0,
-        },
-        zoom: 1,
-        changed: false,
-        angle: 0,
-        flipX: false,
-        flipY: false,
-    };
     public dragged: DraggedData | null = null;
-    public state: CropManagerState = {
-        crop: {
-            x: 0, y: 0,
-            width: 296, height: 296,
-        },
-        imageCrop: {
-            x: 0, y: 0,
-            width: 0, height: 0,
-        },
-        zoom: 1,
-        changed: false,
-        angle: 0,
-        flipX: false,
-        flipY: false,
-    };
     public store: Store<CropManagerState>;
+    public defaultState: CropManagerState;
 
-    constructor(canvas: HTMLCanvasElement, area: HTMLDivElement, store: Store<CropManagerState>) {
+    constructor(store: Store<CropManagerState>, canvas: HTMLCanvasElement, area: HTMLDivElement) {
         this.canvas = canvas;
         this.area = area;
         this.store = store;
+        this.defaultState = store.get();
 
         const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
         this.ctx = ctx;
     }
 
     protected changeState = (nextState: Partial<CropManagerState>) => {
-        this.state = {...this.state, ...nextState};
+        const state = this.store.get();
 
-        this.watch({
-            flipY: this.state.flipY,
-            flipX: this.state.flipX,
-            crop: this.state.crop,
-            changed: this.state.changed,
-        });
+        if (!state.initialChanged) {
+            this.store.set({...state, ...nextState, initialChanged: true, lastChanged: new Date()});
+        } else {
+            this.store.set({...state, ...nextState, changed: true, lastChanged: new Date()});
+        }
+
         this.drawImage();
-        this.state.changed = true;
     }
 
     public loadImage = (src: string) => {
@@ -101,31 +72,32 @@ class CropManager {
 
             const defaultConfig = this.getDefaultConfig();
 
-            if (savedConfig) {
+            if (savedConfig && false) {
                 const nextState = JSON.parse(savedConfig);
                 this.changeState(nextState);
             } else {
                 this.changeState(defaultConfig);
             }
 
-            this.defaulState = defaultConfig;
+            this.defaultState = defaultConfig;
         };
     }
 
     public drawImage() {
+        const state = this.store.get();
         const image = this.defaultImage!;
-        const crop = this.state.crop;
+        const crop = state.crop;
         const ctx = this.ctx;
 
         const horizontalMargin = 24;
         const topMargin = 152;
 
-        const zoom = this.state.zoom;
-        const flipX = this.state.flipX ? -1 : 1;
-        const flipY = this.state.flipY ? -1 : 1;
+        const zoom = state.zoom;
+        const flipX = state.flipX ? -1 : 1;
+        const flipY = state.flipY ? -1 : 1;
 
-        const x = this.state.imageCrop.x + 24;
-        const y = this.state.imageCrop.y + 152;
+        const x = state.imageCrop.x + 24;
+        const y = state.imageCrop.y + 152;
         const w = image.width * zoom;
         const h = image.height * zoom;
 
@@ -186,39 +158,55 @@ class CropManager {
     }
 
     public getDefaultConfig = () => {
+        const aspectRatio = 1.6;
         const image = this.defaultImage!;
         const rect = this.area.getBoundingClientRect();
 
-        const zoom = rect.height / image.height;
-        const width = image.width * zoom;
-        const height = image.height * zoom;
-        const x = (rect.width / 2) - width / 2;
-        const y = (rect.height / 2) - height / 2;
+        let zoom = aspectRatio ?
+            aspectRatio > 1 ?
+                (rect.height * aspectRatio) / image.width
+                : rect.height / image.height
+            : rect.height / image.height;
+        let cropWidth = aspectRatio ? rect.height * aspectRatio : image.width * zoom;
+        let cropHeight = aspectRatio ? rect.height : image.height * zoom;
+
+        const cropX = (rect.width / 2) - cropWidth / 2;
+        const cropY = 0;
+
+        const imageWidth = image.width;
+        const imageHeight = image.height;
+        const imageX = cropX - (imageWidth * zoom - cropWidth) / 2;
+        const imageY = cropY - (imageHeight * zoom - cropHeight) / 2;
 
         return {
             crop: {
-                x,
-                y: this.defaulState.crop.y,
-                width,
-                height: this.defaulState.crop.height,
+                x: cropX,
+                y: cropY,
+                width: cropWidth,
+                height: cropHeight,
             },
             imageCrop: {
-                x,
-                y,
-                width: image.width,
-                height: image.height,
+                x: imageX,
+                y: imageY,
+                width: imageWidth,
+                height: imageHeight,
             },
             zoom,
+            initialChanged: false,
             changed: false,
+            lastChanged: new Date(),
             angle: 0,
             flipX: false,
             flipY: false,
+            aspectRatio: null,
         };
     }
 
-    public zoomTo = (img: HTMLImageElement, imageCrop: Pos2d, crop: Crop, zoom: number) => {
-        const prevWidth = this.defaultImage!.width * this.state.zoom;
-        const prevHeight = this.defaultImage!.height * this.state.zoom;
+    public zoomTo = (img: HTMLImageElement, imageCrop: Crop, crop: Crop, zoom: number) => {
+        const state = this.store.get();
+
+        const prevWidth = this.defaultImage!.width * state.zoom;
+        const prevHeight = this.defaultImage!.height * state.zoom;
         const width = this.defaultImage!.width * zoom;
         const height = this.defaultImage!.height * zoom;
 
@@ -239,9 +227,11 @@ class CropManager {
     }
 
     public move = (cursor: { x: number, y: number }) => {
+        const state = this.store.get();
+
         const dragged = this.dragged;
-        const imageCrop = this.state.imageCrop;
-        const crop = this.state.crop;
+        const imageCrop = state.imageCrop;
+        const crop = state.crop;
 
         if (dragged) {
             if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
@@ -252,7 +242,7 @@ class CropManager {
 
                 const nextImage = {...imageCrop};
                 const nextCrop = {...crop};
-                let zoom = this.state.zoom;
+                let zoom = state.zoom;
 
                 // crop params
                 if (dragged.type === 'lt') {
@@ -324,11 +314,11 @@ class CropManager {
                 // scale
                 const defaultZoom = rect.height / imageCrop.height;
 
-                const rectWidth = this.round(imageCrop.width * this.defaulState.zoom * (this.state.zoom / defaultZoom));
-                const rectHeight = this.round(imageCrop.height * this.defaulState.zoom * (this.state.zoom / defaultZoom));
+                const rectWidth = this.round(imageCrop.width * this.defaultState.zoom * (state.zoom / defaultZoom));
+                const rectHeight = this.round(imageCrop.height * this.defaultState.zoom * (state.zoom / defaultZoom));
 
-                const imageWidth = this.round(imageCrop.width * this.state.zoom);
-                const imageHeight = this.round(imageCrop.height * this.state.zoom);
+                const imageWidth = this.round(imageCrop.width * state.zoom);
+                const imageHeight = this.round(imageCrop.height * state.zoom);
 
                 const diffX = crop.x - nextCrop.x || crop.width - nextCrop.width;
                 const diffY = crop.y - nextCrop.y || crop.height - nextCrop.height;
@@ -426,7 +416,7 @@ class CropManager {
                 });
             } else {
                 if (dragged.type === 'image') {
-                    const nextImage = {...this.state.imageCrop};
+                    const nextImage = {...state.imageCrop};
 
                     const diffX = cursor.x - dragged.data.x;
                     const diffY = cursor.y - dragged.data.y;
@@ -434,10 +424,10 @@ class CropManager {
                     const nextX = nextImage.x + diffX;
                     const nextY = nextImage.y + diffY;
 
-                    if (nextX <= crop.x && nextX + imageCrop.width * this.state.zoom > (crop.x + crop.width)) {
+                    if (nextX <= crop.x && nextX + imageCrop.width * state.zoom > (crop.x + crop.width)) {
                         nextImage.x = nextX;
                     }
-                    if (nextY <= crop.y && nextY + imageCrop.height * this.state.zoom > (crop.y + crop.height)) {
+                    if (nextY <= crop.y && nextY + imageCrop.height * state.zoom > (crop.y + crop.height)) {
                         nextImage.y = nextY;
                     }
 
@@ -453,15 +443,17 @@ class CropManager {
     }
 
     public zoom = (deltaY: number) => {
-        const imageCrop = this.state.imageCrop;
-        const crop = this.state.crop;
+        const state = this.store.get();
+
+        const imageCrop = state.imageCrop;
+        const crop = state.crop;
         const image = this.defaultImage!;
 
 
-        const prevZoom = this.state.zoom;
+        const prevZoom = state.zoom;
         let zoom = prevZoom - (deltaY / 5000);
 
-        const nextImage = {...this.state.imageCrop};
+        const nextImage = {...state.imageCrop};
 
         if (deltaY < 0) {
             // инкремент
@@ -471,8 +463,8 @@ class CropManager {
         } else {
             // декремент
 
-            const imageWidth = imageCrop.width * this.state.zoom;
-            const imageHeight = imageCrop.height * this.state.zoom;
+            const imageWidth = imageCrop.width * state.zoom;
+            const imageHeight = imageCrop.height * state.zoom;
             let nextImageWidth = imageCrop.width * zoom;
             let nextImageHeight = imageCrop.height * zoom;
 
@@ -576,11 +568,12 @@ class CropManager {
     }
 
     public refreshState = () => {
-        this.changeState({...this.defaulState});
+        this.store.set(this.defaultState);
+        this.drawImage();
     }
 
     public save = () => {
-        localStorage.setItem('test', JSON.stringify(this.state));
+        localStorage.setItem('test', JSON.stringify(this.store.get()));
     }
 
     public round = (v: number) => {
@@ -591,16 +584,18 @@ class CropManager {
         this.changeState({angle});
     }
     public rotateLeft = () => {
-        const nextAngle = (this.state.angle + 90) % 360;
+        const state = this.store.get();
+
+        const nextAngle = (state.angle + 90) % 360;
 
         this.rotate(nextAngle);
     }
 
-    public flipX = (flipX: boolean) => {
-        this.changeState({flipX});
+    public flipX = () => {
+        this.changeState({flipX: !this.store.get().flipX});
     }
-    public flipY = (flipY: boolean) => {
-        this.changeState({flipY});
+    public flipY = () => {
+        this.changeState({flipY: !this.store.get().flipY});
     }
 }
 
