@@ -41,10 +41,16 @@ const styles = () => ({
         margin: '4px 24px 24px 24px',
         position: 'relative',
     },
+    tab: {
+        minWidth: 72,
+        marginLeft: 5,
+        marginRight: 5,
+    },
     cropGrid: {
         boxSizing: 'border-box',
         position: 'absolute',
         border: 'solid 1px white',
+        cursor: 'move',
     },
     canvas: {
         borderRadius: 10,
@@ -195,8 +201,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         textColor='inherit'
                         style={{color: 'white'}}
                     >
-                        <Tab label='Crop' icon={<CropIcon/>}/>
-                        <Tab label='Save' value={-1}/>
+                        <Tab label='Crop' icon={<CropIcon/>} className={classes.tab}/>
+                        <Tab label='Save' value={-1} className={classes.tab}/>
                     </Tabs>
                     <Button
                         style={{backgroundColor: '#ffd843'}}
@@ -248,28 +254,28 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         onMouseDown={this.onMouseDown('image')}
                     >
                         <Box
-                            style={{left: 0, top: 0, transform: 'translate(-50%, -50%)'}}
+                            style={{left: 0, top: 0, transform: 'translate(-50%, -50%)', cursor: 'nwse-resize'}}
                             className={classes.circle}
                             onMouseDown={this.onMouseDown('lt')}
                         >
                             <div className={classes.circleIcon}/>
                         </Box>
                         <Box
-                            style={{right: 0, top: 0, transform: 'translate(50%, -50%)'}}
+                            style={{right: 0, top: 0, transform: 'translate(50%, -50%)', cursor: 'nesw-resize'}}
                             className={classes.circle}
                             onMouseDown={this.onMouseDown('rt')}
                         >
                             <div className={classes.circleIcon}/>
                         </Box>
                         <Box
-                            style={{left: 0, bottom: 0, transform: 'translate(-50%, 50%)'}}
+                            style={{left: 0, bottom: 0, transform: 'translate(-50%, 50%)', cursor: 'nesw-resize'}}
                             className={classes.circle}
                             onMouseDown={this.onMouseDown('lb')}
                         >
                             <div className={classes.circleIcon}/>
                         </Box>
                         <Box
-                            style={{right: 0, bottom: 0, transform: 'translate(50%, 50%)'}}
+                            style={{right: 0, bottom: 0, transform: 'translate(50%, 50%)', cursor: 'nwse-resize'}}
                             className={classes.circle}
                             onMouseDown={this.onMouseDown('rb')}
                         >

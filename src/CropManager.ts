@@ -91,17 +91,33 @@ class CropManager {
     }
 
     public drawImage() {
-        if (this.image) {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const image = this.image!;
+        const crop = this.state.crop;
 
-            this.ctx.drawImage(
-                this.image,
-                this.state.image.x + 24,
-                this.state.image.y + 152,
-                this.image.width * this.state.zoom,
-                this.image.height * this.state.zoom,
-            );
-        }
+        // clear canvas
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // draw image
+        this.ctx.drawImage(
+            image,
+            this.state.image.x + 24,
+            this.state.image.y + 152,
+            image.width * this.state.zoom,
+            image.height * this.state.zoom,
+        );
+
+        // darken background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+
+        const cropLeft = crop.x + 24;
+        const cropRight = cropLeft + crop.width;
+        const cropTop = crop.y + 152;
+        const cropBottom = cropTop + crop.height;
+
+        this.ctx.fillRect(0, 0, cropLeft, this.canvas.height);
+        this.ctx.fillRect(cropRight, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillRect(cropLeft, 0, crop.width, cropTop);
+        this.ctx.fillRect(cropLeft, cropBottom, crop.width, this.canvas.height);
     }
 
     public getDefaultConfig = () => {
