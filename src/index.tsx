@@ -21,7 +21,7 @@ const styles = () => ({
         boxSizing: 'border-box',
         // overflow: 'hidden',
         position: 'relative',
-        background: 'radial-gradient(#282828, #000000)',
+        background: 'radial-gradient(#747171, #000000)',
         borderRadius: 10,
         boxShadow: '0 0.65rem 0.5rem -0.5rem rgba(0,0,0,.5), 0 0.75rem 3rem rgba(0,0,0,.5)',
     },
@@ -89,6 +89,8 @@ export interface CropperState {
     crop: Crop;
     tab: number;
     changed: boolean;
+    flipX: boolean;
+    flipY: boolean;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -107,6 +109,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         },
         tab: 0,
         changed: false,
+        flipX: false,
+        flipY: false,
     }
 
     protected onChange = (state: Partial<CropperState>) => {
@@ -119,10 +123,19 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public componentDidMount(): void {
         if (this.cropArea && this.canvas && this.cropGrid) {
-            this.manager = new CropManager(this.canvas, this.cropArea, ({crop, changed}) => this.onChange({
-                crop,
-                changed
-            }));
+            this.manager = new CropManager(this.canvas, this.cropArea, ({crop, changed, flipX, flipY}) => {
+                if (crop !== this.state.crop ||
+                    this.state.changed !== changed ||
+                    this.state.flipY !== flipY ||
+                    this.state.flipX !== flipX) {
+                    this.onChange({
+                        crop,
+                        changed,
+                        flipX,
+                        flipY,
+                    });
+                }
+            });
 
             document.addEventListener('mousemove', this.onMouseMove);
             document.addEventListener('mouseup', this.onMouseUp);
@@ -165,7 +178,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public render() {
         const {classes} = this.props;
-        const {crop, tab, changed} = this.state;
+        const {crop, tab, changed, flipX, flipY} = this.state;
 
         return (
             <Box
@@ -220,15 +233,17 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     >Rotate left</Button>
                     <Button
                         className={classes.btn}
-                        startIcon={<FlipIcon/>}
+                        startIcon={<FlipIcon style={{transform: `rotate(${flipX ? 180 : 0}deg)`}}/>}
                         variant='outlined'
                         color='inherit'
+                        onClick={() => this.manager!.flipX(!this.state.flipX)}
                     >Flip horizontal</Button>
                     <Button
                         className={classes.btn}
-                        startIcon={<FlipIcon style={{transform: 'rotate(90deg)'}}/>}
+                        startIcon={<FlipIcon style={{transform: `rotate(${flipY ? 270 : 90}deg)`}}/>}
                         variant='outlined'
                         color='inherit'
+                        onClick={() => this.manager!.flipY(!this.state.flipY)}
                     >Flip vertical</Button>
                     <Button
                         className={classes.btn}

@@ -1,3 +1,5 @@
+import {Store} from "@muzikanto/observable";
+
 export interface Pos2d {
     x: number;
     y: number;
@@ -10,10 +12,12 @@ export interface Crop extends Pos2d {
 
 export interface CropManagerState {
     crop: Crop;
-    image: Crop;
+    imageCrop: Crop;
     zoom: number;
     changed: boolean;
     angle: number;
+    flipX: boolean;
+    flipY: boolean;
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
@@ -23,10 +27,13 @@ export type DraggedData = {
     data: { x: number, y: number; };
 }
 
+type Watcher = (params: Pick<CropManagerState, 'changed' | 'flipX' | 'flipY' | 'crop'>) => void
+
 class CropManager {
     public canvas: HTMLCanvasElement;
     public ctx: CanvasRenderingContext2D;
-    public image: HTMLImageElement | null = null;
+    public defaultImage: HTMLImageElement | null = null;
+    public newImage: HTMLImageElement | null = null;
     public area: HTMLDivElement;
 
     public defaulState: CropManagerState = {
@@ -34,13 +41,15 @@ class CropManager {
             x: 0, y: 0,
             width: 296, height: 296,
         },
-        image: {
+        imageCrop: {
             x: 0, y: 0,
             width: 0, height: 0,
         },
         zoom: 1,
         changed: false,
         angle: 0,
+        flipX: false,
+        flipY: false,
     };
     public dragged: DraggedData | null = null;
     public state: CropManagerState = {
@@ -48,20 +57,22 @@ class CropManager {
             x: 0, y: 0,
             width: 296, height: 296,
         },
-        image: {
+        imageCrop: {
             x: 0, y: 0,
             width: 0, height: 0,
         },
         zoom: 1,
         changed: false,
         angle: 0,
+        flipX: false,
+        flipY: false,
     };
-    public watch: (params: { crop: Crop, changed: boolean }) => void;
+    public store: Store<CropManagerState>;
 
-    constructor(canvas: HTMLCanvasElement, area: HTMLDivElement, watcher: (params: { crop: Crop, changed: boolean }) => void) {
+    constructor(canvas: HTMLCanvasElement, area: HTMLDivElement, store: Store<CropManagerState>) {
         this.canvas = canvas;
         this.area = area;
-        this.watch = watcher;
+        this.store = store;
 
         const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
         this.ctx = ctx;
@@ -69,7 +80,13 @@ class CropManager {
 
     protected changeState = (nextState: Partial<CropManagerState>) => {
         this.state = {...this.state, ...nextState};
-        this.watch({crop: this.state.crop, changed: this.state.changed});
+
+        this.watch({
+            flipY: this.state.flipY,
+            flipX: this.state.flipX,
+            crop: this.state.crop,
+            changed: this.state.changed,
+        });
         this.drawImage();
         this.state.changed = true;
     }
@@ -77,7 +94,7 @@ class CropManager {
     public loadImage = (src: string) => {
         const image = new Image();
         image.src = src;
-        this.image = image;
+        this.defaultImage = image;
 
         image.onload = () => {
             const savedConfig = localStorage.getItem('test');
@@ -96,32 +113,19 @@ class CropManager {
     }
 
     public drawImage() {
-        const image = this.image!;
+        const image = this.defaultImage!;
         const crop = this.state.crop;
         const ctx = this.ctx;
 
         const horizontalMargin = 24;
         const topMargin = 152;
-        const bottomMargin = 80;
 
         const zoom = this.state.zoom;
-        const angle = this.state.angle;
+        const flipX = this.state.flipX ? -1 : 1;
+        const flipY = this.state.flipY ? -1 : 1;
 
-        const xMargins: any = {
-            0: horizontalMargin,
-            90: 0,
-            180: horizontalMargin,
-            270: 0,
-        };
-        const yMargins: any = {
-            0: topMargin,
-            90: 0,
-            180: bottomMargin,
-            270: 0
-        };
-
-        const x = this.state.image.x + 24;
-        const y = this.state.image.y + 152;
+        const x = this.state.imageCrop.x + 24;
+        const y = this.state.imageCrop.y + 152;
         const w = image.width * zoom;
         const h = image.height * zoom;
 
@@ -130,8 +134,8 @@ class CropManager {
         const cropTop = crop.y + topMargin;
         const cropBottom = cropTop + crop.height;
 
-        const translateX = this.canvas.width / 2;
-        const translateY = this.canvas.height / 2;
+        const translateX = (cropLeft + crop.width);
+        const translateY = (cropTop + crop.height);
 
         // clear canvas
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -139,61 +143,84 @@ class CropManager {
 
         // set center of canvas
         ctx.translate(translateX, translateY);
-        ctx.rotate(angle * Math.PI / 180);
+
+        ctx.scale(flipX, flipY);
 
         // draw image
-        ctx.drawImage(image, x - translateX, y - translateY, w, h);
+        ctx.drawImage(image,
+            (x - translateX) * flipX,
+            (y - translateY) * flipY,
+            w * flipX,
+            h * flipY,
+        );
 
         // darken background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.rotate(-angle * Math.PI / 180);
 
-        ctx.fillRect(0 - translateX, 0 - translateY, cropLeft, this.canvas.height);
-        ctx.fillRect(cropRight - translateX, 0 - translateY, this.canvas.width, this.canvas.height);
-        ctx.fillRect(cropLeft  - translateX, 0 - translateY, crop.width, cropTop);
-        ctx.fillRect(cropLeft  - translateX, cropBottom - translateY, crop.width, this.canvas.height);
+        ctx.fillRect(
+            (0 - translateX) * flipX,
+            (0 - translateY) * flipY,
+            cropLeft * flipX,
+            this.canvas.height * flipY,
+        );
+        ctx.fillRect(
+            (cropRight - translateX) * flipX,
+            (0 - translateY) * flipY,
+            this.canvas.width * flipX,
+            this.canvas.height * flipY,
+        );
+        ctx.fillRect(
+            (cropLeft - translateX) * flipX,
+            (0 - translateY) * flipY,
+            crop.width * flipX,
+            cropTop * flipY,
+        );
+        ctx.fillRect(
+            (cropLeft - translateX) * flipX,
+            (cropBottom - translateY) * flipY,
+            crop.width * flipX,
+            this.canvas.height * flipY,
+        );
 
         ctx.restore();
     }
 
     public getDefaultConfig = () => {
-        if (this.image) {
-            const image = this.image;
-            const rect = this.area.getBoundingClientRect();
+        const image = this.defaultImage!;
+        const rect = this.area.getBoundingClientRect();
 
-            const zoom = rect.height / image.height;
-            const width = image.width * zoom;
-            const height = image.height * zoom;
-            const x = (rect.width / 2) - width / 2;
-            const y = (rect.height / 2) - height / 2;
+        const zoom = rect.height / image.height;
+        const width = image.width * zoom;
+        const height = image.height * zoom;
+        const x = (rect.width / 2) - width / 2;
+        const y = (rect.height / 2) - height / 2;
 
-            return {
-                crop: {
-                    x,
-                    y: this.defaulState.crop.y,
-                    width,
-                    height: this.defaulState.crop.height,
-                },
-                image: {
-                    x,
-                    y,
-                    width: this.image.width,
-                    height: this.image.height,
-                },
-                zoom,
-                changed: false,
-                angle: 0,
-            };
-        }
-
-        return this.defaulState;
+        return {
+            crop: {
+                x,
+                y: this.defaulState.crop.y,
+                width,
+                height: this.defaulState.crop.height,
+            },
+            imageCrop: {
+                x,
+                y,
+                width: image.width,
+                height: image.height,
+            },
+            zoom,
+            changed: false,
+            angle: 0,
+            flipX: false,
+            flipY: false,
+        };
     }
 
     public zoomTo = (img: HTMLImageElement, imageCrop: Pos2d, crop: Crop, zoom: number) => {
-        const prevWidth = this.image!.width * this.state.zoom;
-        const prevHeight = this.image!.height * this.state.zoom;
-        const width = this.image!.width * zoom;
-        const height = this.image!.height * zoom;
+        const prevWidth = this.defaultImage!.width * this.state.zoom;
+        const prevHeight = this.defaultImage!.height * this.state.zoom;
+        const width = this.defaultImage!.width * zoom;
+        const height = this.defaultImage!.height * zoom;
 
         const diffW = width - prevWidth;
         const diffH = height - prevHeight;
@@ -213,10 +240,10 @@ class CropManager {
 
     public move = (cursor: { x: number, y: number }) => {
         const dragged = this.dragged;
-        const imageCrop = this.state.image;
+        const imageCrop = this.state.imageCrop;
         const crop = this.state.crop;
 
-        if (dragged && this.image) {
+        if (dragged) {
             if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
                 const rect = this.area.getBoundingClientRect();
 
@@ -227,7 +254,7 @@ class CropManager {
                 const nextCrop = {...crop};
                 let zoom = this.state.zoom;
 
-                // drag angle
+                // crop params
                 if (dragged.type === 'lt') {
                     nextCrop.x = rawX < 0 ? 0 : rawX;
                     nextCrop.y = rawY < 0 ? 0 : rawY;
@@ -363,12 +390,13 @@ class CropManager {
                             }
                         } else {
                             if (nextImageWidth > rectWidth) {
+                                zoom = nextZoom;
                                 nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
                                 nextImage.y = nextImage.y - (nextImageHeight - imageHeight);
                             }
                         }
                     }
-                } else {
+                } else if (diffY < 0) {
                     if (imageWidth >= rectWidth) {
                         const lWZoom = nextCrop.width / imageCrop.width;
                         const lHZoom = nextCrop.height / imageCrop.height;
@@ -378,10 +406,11 @@ class CropManager {
 
                         if (nextCrop.height < imageHeight) {
                             if (nextCrop.y + nextCrop.height > nextImage.y + imageHeight) {
-                                nextImage.y = nextImage.y - (crop.height - nextCrop.height);
+                                nextImage.y = nextImage.y - (nextCrop.height - crop.height);
                             }
                         } else {
-                            if (imageWidth > rectWidth) {
+                            if (nextImageWidth > rectWidth) {
+                                zoom = nextZoom;
                                 nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
                                 nextImage.y = nextCrop.y;
                             }
@@ -391,13 +420,13 @@ class CropManager {
                 // -----------
 
                 this.changeState({
-                    image: nextImage,
+                    imageCrop: nextImage,
                     crop: nextCrop,
                     zoom,
                 });
             } else {
                 if (dragged.type === 'image') {
-                    const nextImage = {...this.state.image};
+                    const nextImage = {...this.state.imageCrop};
 
                     const diffX = cursor.x - dragged.data.x;
                     const diffY = cursor.y - dragged.data.y;
@@ -414,7 +443,7 @@ class CropManager {
 
                     this.dragged!.data = cursor;
                     this.changeState({
-                        image: nextImage,
+                        imageCrop: nextImage,
                     });
                 }
             }
@@ -424,118 +453,118 @@ class CropManager {
     }
 
     public zoom = (deltaY: number) => {
-        const imageCrop = this.state.image;
+        const imageCrop = this.state.imageCrop;
         const crop = this.state.crop;
+        const image = this.defaultImage!;
 
-        if (this.image) {
-            const prevZoom = this.state.zoom;
-            let zoom = prevZoom - (deltaY / 5000);
 
-            const nextImage = {...this.state.image};
+        const prevZoom = this.state.zoom;
+        let zoom = prevZoom - (deltaY / 5000);
 
-            if (deltaY < 0) {
-                // инкремент
-                const nextImageCrop = this.zoomTo(this.image, imageCrop, crop, zoom);
+        const nextImage = {...this.state.imageCrop};
 
-                Object.assign(nextImage, nextImageCrop);
-            } else {
-                // декремент
+        if (deltaY < 0) {
+            // инкремент
+            const nextImageCrop = this.zoomTo(image, imageCrop, crop, zoom);
 
-                const imageWidth = imageCrop.width * this.state.zoom;
-                const imageHeight = imageCrop.height * this.state.zoom;
-                let nextImageWidth = imageCrop.width * zoom;
-                let nextImageHeight = imageCrop.height * zoom;
+            Object.assign(nextImage, nextImageCrop);
+        } else {
+            // декремент
 
-                // если картинка меньше зума, ставим максимально возможный
-                if (nextImageWidth < crop.width) {
-                    zoom = crop.width / imageCrop.width;
-                    nextImageWidth = imageCrop.width * zoom;
-                    nextImageHeight = imageCrop.height * zoom;
+            const imageWidth = imageCrop.width * this.state.zoom;
+            const imageHeight = imageCrop.height * this.state.zoom;
+            let nextImageWidth = imageCrop.width * zoom;
+            let nextImageHeight = imageCrop.height * zoom;
+
+            // если картинка меньше зума, ставим максимально возможный
+            if (nextImageWidth < crop.width) {
+                zoom = crop.width / imageCrop.width;
+                nextImageWidth = imageCrop.width * zoom;
+                nextImageHeight = imageCrop.height * zoom;
+            }
+            if (nextImageHeight < crop.height) {
+                zoom = crop.height / imageCrop.height;
+                nextImageWidth = imageCrop.width * zoom;
+                nextImageHeight = imageCrop.height * zoom;
+            }
+
+            const nextImageCrop = this.zoomTo(image, imageCrop, crop, zoom);
+
+            Object.assign(
+                nextImage,
+                nextImageCrop,
+            );
+
+            const topDiff = crop.y - imageCrop.y;
+            const leftDiff = crop.x - imageCrop.x;
+
+            const rightDiff = (crop.x + crop.width) - (nextImage.x + imageWidth);
+            const bottomDiff = (crop.y + crop.height) - (nextImage.y + imageHeight);
+
+            const top = Math.abs(topDiff) < Math.abs(bottomDiff);
+            const left = Math.abs(leftDiff) < Math.abs(rightDiff);
+
+            const lt = left && top;
+            const rt = !left && top;
+            const lb = left && !top;
+            const rb = !left && !top;
+
+            if (lt) {
+                if (crop.x < nextImage.x) {
+                    nextImage.x = crop.x;
                 }
-                if (nextImageHeight < crop.height) {
-                    zoom = crop.height / imageCrop.height;
-                    nextImageWidth = imageCrop.width * zoom;
-                    nextImageHeight = imageCrop.height * zoom;
+                if (crop.y < nextImage.y) {
+                    nextImage.y = crop.y;
                 }
+            }
+            if (rt) {
+                const imageRightX = nextImage.x + nextImageWidth;
+                const cropRightX = crop.x + crop.width;
 
-                const nextImageCrop = this.zoomTo(this.image, imageCrop, crop, zoom);
-
-                Object.assign(
-                    nextImage,
-                    nextImageCrop,
-                );
-
-                const topDiff = crop.y - imageCrop.y;
-                const leftDiff = crop.x - imageCrop.x;
-
-                const rightDiff = (crop.x + crop.width) - (nextImage.x + imageWidth);
-                const bottomDiff = (crop.y + crop.height) - (nextImage.y + imageHeight);
-
-                const top = Math.abs(topDiff) < Math.abs(bottomDiff);
-                const left = Math.abs(leftDiff) < Math.abs(rightDiff);
-
-                const lt = left && top;
-                const rt = !left && top;
-                const lb = left && !top;
-                const rb = !left && !top;
-
-                if (lt) {
-                    if (crop.x < nextImage.x) {
-                        nextImage.x = crop.x;
-                    }
-                    if (crop.y < nextImage.y) {
-                        nextImage.y = crop.y;
-                    }
+                if (cropRightX > imageRightX) {
+                    nextImage.x = nextImage.x + (cropRightX - imageRightX);
                 }
-                if (rt) {
-                    const imageRightX = nextImage.x + nextImageWidth;
-                    const cropRightX = crop.x + crop.width;
-
-                    if (cropRightX > imageRightX) {
-                        nextImage.x = nextImage.x + (cropRightX - imageRightX);
-                    }
-                    if (crop.y < nextImage.y) {
-                        nextImage.y = crop.y;
-                    }
+                if (crop.y < nextImage.y) {
+                    nextImage.y = crop.y;
                 }
-                if (lb) {
-                    const imageBottomY = nextImage.y + nextImageHeight;
-                    const croBottomY = crop.y + crop.height;
+            }
+            if (lb) {
+                const imageBottomY = nextImage.y + nextImageHeight;
+                const croBottomY = crop.y + crop.height;
 
-                    if (crop.x < nextImage.x) {
-                        nextImage.x = crop.x;
-                    }
-                    if (croBottomY > imageBottomY) {
-                        nextImage.y = nextImage.y + (croBottomY - imageBottomY);
-                    }
+                if (crop.x < nextImage.x) {
+                    nextImage.x = crop.x;
                 }
-                if (rb) {
-                    const imageRightX = nextImage.x + nextImageWidth;
-                    const cropRightX = crop.x + crop.width;
-                    const imageBottomY = nextImage.y + nextImageHeight;
-                    const croBottomY = crop.y + crop.height;
+                if (croBottomY > imageBottomY) {
+                    nextImage.y = nextImage.y + (croBottomY - imageBottomY);
+                }
+            }
+            if (rb) {
+                const imageRightX = nextImage.x + nextImageWidth;
+                const cropRightX = crop.x + crop.width;
+                const imageBottomY = nextImage.y + nextImageHeight;
+                const croBottomY = crop.y + crop.height;
 
-                    if (cropRightX > imageRightX) {
-                        nextImage.x = nextImage.x + (cropRightX - imageRightX);
-                    }
-                    if (croBottomY > imageBottomY) {
-                        nextImage.y = nextImage.y + (croBottomY - imageBottomY);
-                    }
+                if (cropRightX > imageRightX) {
+                    nextImage.x = nextImage.x + (cropRightX - imageRightX);
                 }
-
-                if (nextImageWidth < crop.width) {
-                    return;
-                }
-                if (nextImageHeight < crop.height) {
-                    return;
+                if (croBottomY > imageBottomY) {
+                    nextImage.y = nextImage.y + (croBottomY - imageBottomY);
                 }
             }
 
-            this.changeState({
-                image: nextImage,
-                zoom,
-            });
+            if (nextImageWidth < crop.width) {
+                return;
+            }
+            if (nextImageHeight < crop.height) {
+                return;
+            }
         }
+
+        this.changeState({
+            imageCrop: nextImage,
+            zoom,
+        });
     }
 
     public setDragged = (type: DragItemType, data: { x: number, y: number; }) => {
@@ -561,11 +590,17 @@ class CropManager {
     public rotate = (angle: number) => {
         this.changeState({angle});
     }
-
     public rotateLeft = () => {
         const nextAngle = (this.state.angle + 90) % 360;
 
         this.rotate(nextAngle);
+    }
+
+    public flipX = (flipX: boolean) => {
+        this.changeState({flipX});
+    }
+    public flipY = (flipY: boolean) => {
+        this.changeState({flipY});
     }
 }
 
