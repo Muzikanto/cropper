@@ -15,6 +15,13 @@ import CropIcon from '@material-ui/icons/Crop';
 import CropManager, {Crop, CropManagerState, DragItemType} from './CropManager';
 import createStore from "@muzikanto/observable/createStore";
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
+import {Popover} from "@material-ui/core";
+import Paper from "@material-ui/core/Paper";
+import CropFreeIcon from '@material-ui/icons/CropFree';
+import CropLandscapeIcon from '@material-ui/icons/CropLandscape';
+import CropPortraitIcon from '@material-ui/icons/CropPortrait';
+import CropSquareIcon from '@material-ui/icons/CropSquare';
+
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -89,6 +96,7 @@ export interface CropperProps extends WithStyles<typeof styles> {
 
 export interface CropperState {
     tab: number;
+    aspectRatio: HTMLElement | null;
 }
 
 const store = createStore<CropManagerState>({
@@ -109,7 +117,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
     public cropGrid: HTMLDivElement | null = null;
     public canvas: HTMLCanvasElement | null = null;
 
-    public state = {tab: 0};
+    public state = {tab: 0, aspectRatio: null};
 
     protected manager: CropManager | null = null;
 
@@ -258,8 +266,43 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         startIcon={<AspectRatioIcon/>}
                         variant='outlined'
                         color='inherit'
-                        onClick={() => this.manager!.changeAspectRatio(null)}
+                        onClick={(e) => {
+                            this.setState({...this.state, aspectRatio: e.currentTarget});
+                            // this.manager!.changeAspectRatio(null);
+                        }}
                     >Aspect ratio</Button>
+                    <Popover
+                        open={Boolean(this.state.aspectRatio)}
+                        anchorEl={this.state.aspectRatio}
+                        onClose={() => this.setState(p => ({...p, aspectRatio: null}))}
+                        anchorOrigin={{
+                            vertical: 'bottom',
+                            horizontal: 'center',
+                        }}
+                        transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'center',
+                        }}
+                    >
+                        <Paper style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                            <Button
+                                startIcon={<CropFreeIcon/>}
+                                onClick={() => this.manager!.changeAspectRatio(null)}
+                            >Free</Button>
+                            <Button
+                                startIcon={<CropLandscapeIcon/>}
+                                onClick={() => this.manager!.changeAspectRatio(16 / 10)}
+                            >Landscape</Button>
+                            <Button
+                                startIcon={<CropPortraitIcon/>}
+                                onClick={() => this.manager!.changeAspectRatio(10 / 16)}
+                            >Portrait</Button>
+                            <Button
+                                startIcon={<CropSquareIcon/>}
+                                onClick={() => this.manager!.changeAspectRatio(1)}
+                            >Square</Button>
+                        </Paper>
+                    </Popover>
                 </Toolbar>
 
                 <StoreConsumer store={store} selector={s => s.crop}>
