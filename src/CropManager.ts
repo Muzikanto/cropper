@@ -1,4 +1,9 @@
 import {Store} from "@muzikanto/observable";
+import getDefaultCropperConfig from "./manager/get-config";
+import cropMove from "./manager/crop-move";
+import cropperZoomTo from "./manager/image-zoom";
+import imageMove from "./manager/image-move";
+import cropperImageScale from "./manager/image-scale";
 
 export interface Pos2d {
     x: number;
@@ -31,10 +36,15 @@ export type DraggedData = {
     data: { x: number, y: number; };
 }
 
+// TODO
+/*
+    - scale decrement error
+ */
+
 class CropManager {
     public canvas: HTMLCanvasElement;
     public ctx: CanvasRenderingContext2D;
-    public defaultImage: HTMLImageElement | null = null;
+    public image: HTMLImageElement | null = null;
     public area: HTMLDivElement;
 
     public dragged: DraggedData | null = null;
@@ -43,7 +53,7 @@ class CropManager {
     public minSize = {
         height: 50,
         width: 50,
-    }
+    };
 
     constructor(store: Store<CropManagerState>, canvas: HTMLCanvasElement, area: HTMLDivElement) {
         this.canvas = canvas;
@@ -70,19 +80,18 @@ class CropManager {
 
     public loadImage = (src: string) => {
         const image = new Image();
+
         image.src = src;
-        this.defaultImage = image;
-
         image.onload = () => {
-            const savedConfig = localStorage.getItem('test');
-
             const defaultConfig = {
                 ...this.store.get(),
-                ...this.getConfig(this.defaultImage!, this.area, this.store.get().aspectRatio),
+                ...this.getDefaultConfig(image, this.area, this.store.get().aspectRatio),
             };
 
-            if (1) {
-                const nextState = JSON.parse(savedConfig);
+            if (0) {
+                const savedConfig = localStorage.getItem('test');
+                const nextState = JSON.parse(savedConfig as string);
+
                 this.changeState(nextState);
             } else {
                 this.changeState(defaultConfig);
@@ -90,11 +99,13 @@ class CropManager {
 
             this.defaultState = defaultConfig;
         };
+
+        this.image = image;
     }
 
     public drawImage() {
         const state = this.store.get();
-        const image = this.defaultImage!;
+        const image = this.image!;
         const crop = state.crop;
         const ctx = this.ctx;
 
@@ -166,75 +177,12 @@ class CropManager {
         ctx.restore();
     }
 
-    protected getConfig = (image: HTMLImageElement, area: HTMLDivElement, aspectRatio: number | null):
-        Pick<CropManagerState, 'crop' | 'imageCrop' | 'zoom' | 'aspectRatio' | 'minZoom'> => {
-        const rect = area.getBoundingClientRect();
-
-        let zoom = aspectRatio ?
-            aspectRatio > 1 ?
-                (rect.height * aspectRatio) / image.width
-                : rect.height / image.height
-            : rect.height / image.height;
-        let cropWidth = aspectRatio ? rect.height * aspectRatio : image.width * zoom;
-        let cropHeight = aspectRatio ? rect.height : image.height * zoom;
-
-        const cropX = (rect.width / 2) - cropWidth / 2;
-        const cropY = 0;
-
-        const imageWidth = image.width;
-        const imageHeight = image.height;
-        const imageX = cropX - (imageWidth * zoom - cropWidth) / 2;
-        const imageY = cropY - (imageHeight * zoom - cropHeight) / 2;
-
-        return {
-            crop: {
-                x: cropX,
-                y: cropY,
-                width: cropWidth,
-                height: cropHeight,
-            },
-            imageCrop: {
-                x: imageX,
-                y: imageY,
-                width: imageWidth,
-                height: imageHeight,
-            },
-            zoom,
-            minZoom: zoom,
-            aspectRatio,
-        };
-    }
-
-    public zoomTo = (img: HTMLImageElement, imageCrop: Crop, crop: Crop, zoom: number) => {
-        const state = this.store.get();
-
-        const prevWidth = this.defaultImage!.width * state.zoom;
-        const prevHeight = this.defaultImage!.height * state.zoom;
-        const width = this.defaultImage!.width * zoom;
-        const height = this.defaultImage!.height * zoom;
-
-        const diffW = width - prevWidth;
-        const diffH = height - prevHeight;
-
-        const cropCenterX = (crop.x + crop.width / 2) - imageCrop.x;
-        const xPercent = cropCenterX / prevWidth;
-        const cropCenterY = (crop.y + crop.height / 2) - imageCrop.y;
-        const yPercent = cropCenterY / prevHeight;
-
-        const x = imageCrop.x - (diffW * xPercent);
-        const y = imageCrop.y - (diffH * yPercent);
-
-        return {
-            x, y,
-        };
-    }
     public zoom = (deltaY: number) => {
         const state = this.store.get();
 
         const imageCrop = state.imageCrop;
         const crop = state.crop;
-        const image = this.defaultImage!;
-
+        const image = this.image!;
 
         const prevZoom = state.zoom;
         let zoom = prevZoom - (deltaY / 5000);
@@ -243,7 +191,7 @@ class CropManager {
 
         if (deltaY < 0) {
             // инкремент
-            const nextImageCrop = this.zoomTo(image, imageCrop, crop, zoom);
+            const nextImageCrop = this.zoomTo(image, imageCrop, crop, state.zoom, zoom);
 
             Object.assign(nextImage, nextImageCrop);
         } else {
@@ -266,7 +214,7 @@ class CropManager {
                 nextImageHeight = imageCrop.height * zoom;
             }
 
-            const nextImageCrop = this.zoomTo(image, imageCrop, crop, zoom);
+            const nextImageCrop = this.zoomTo(image, imageCrop, crop, state.zoom, zoom);
 
             Object.assign(
                 nextImage,
@@ -355,11 +303,11 @@ class CropManager {
 
         if (dragged) {
             if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
-                const nextCrop = this.moveCrop(dragged.type, cursor, crop, this.area, state.aspectRatio);
+                const nextCrop = this.moveCrop(dragged.type, cursor, crop, this.area, state.aspectRatio, this.minSize);
                 const {
                     zoom: nextZoom,
                     cropImage: nextCropImage,
-                } = this.scaleZoomImage(crop, nextCrop, imageCrop, state.zoom);
+                } = this.scaleZoomImage(crop, nextCrop, imageCrop, state.zoom, state.minZoom);
 
                 this.changeState({
                     imageCrop: nextCropImage,
@@ -381,269 +329,11 @@ class CropManager {
         return null;
     }
 
-    public scaleZoomImage = (prevCrop: Crop, nextCrop: Crop, imageCrop: Crop, zoom: number) => {
-        const state = this.store.get();
-
-        const nextCropImage = {...imageCrop};
-        let nextZoom = zoom;
-
-        const minWidth = this.round(imageCrop.width * state.minZoom);
-        const minHeight = this.round(imageCrop.height * state.minZoom);
-
-        const imageWidth = this.round(imageCrop.width * zoom);
-        const imageHeight = this.round(imageCrop.height * zoom);
-
-        const diffX = prevCrop.x - nextCrop.x || nextCrop.width - prevCrop.width;
-        const diffY = prevCrop.y - nextCrop.y || nextCrop.height - prevCrop.height;
-
-        if (diffX > 0) {
-            if (imageHeight >= minHeight) {
-                const lWZoom = nextCrop.width / imageCrop.width;
-                const lHZoom = nextCrop.height / imageCrop.height;
-                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                const nextImageHeight = imageCrop.height * newZoom;
-
-                if (nextCrop.width < imageWidth) {
-                    if (nextCrop.x < nextCropImage.x) {
-                        nextCropImage.x = nextCropImage.x + (nextCrop.x - prevCrop.x);
-                    } else if (nextCrop.x + nextCrop.width > nextCropImage.x + imageWidth) {
-                        nextCropImage.x = nextCropImage.x + (nextCrop.width - prevCrop.width);
-                    }
-                } else {
-                    if (nextImageHeight > minHeight) {
-                        nextZoom = newZoom;
-                        nextCropImage.x = nextCrop.x;
-                        nextCropImage.y = nextCropImage.y - (nextImageHeight - imageHeight) / 2;
-                    }
-                }
-            }
-        } else if (diffX < 0) {
-            if (imageHeight >= minHeight) {
-                const lWZoom = nextCrop.width / imageCrop.width;
-                const lHZoom = nextCrop.height / imageCrop.height;
-                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                const nextImageWidth = imageCrop.width * newZoom;
-                const nextImageHeight = imageCrop.height * newZoom;
-
-                if (nextCrop.width > imageWidth) {
-                    if (nextCrop.x + nextCrop.width > nextCropImage.x + imageWidth) {
-                        nextCropImage.x = nextCropImage.x + (nextCrop.width - prevCrop.width);
-                    }
-                } else {
-                    if (nextImageHeight > minHeight) {
-                        nextZoom = newZoom;
-                        nextCropImage.x = nextCropImage.x - (nextImageWidth - imageWidth) / 2;
-                        nextCropImage.y = nextCropImage.y - (nextImageHeight - imageHeight) / 2;
-                    }
-                }
-            }
-        }
-
-        if (diffY > 0) {
-            if (imageWidth >= minWidth) {
-                const lWZoom = nextCrop.width / imageCrop.width;
-                const lHZoom = nextCrop.height / imageCrop.height;
-                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                const nextImageWidth = imageCrop.width * newZoom;
-                const nextImageHeight = imageCrop.height * newZoom;
-
-                if (nextCrop.height < imageHeight) {
-                    if (nextCrop.y < nextCropImage.y) {
-                        nextCropImage.y = nextCrop.y;
-                    } else if (nextCrop.y + nextCrop.height > nextCropImage.y + imageHeight) {
-                        nextCropImage.y = nextCropImage.y - (prevCrop.height - nextCrop.height);
-                    }
-                } else {
-                    if (nextImageWidth > minWidth) {
-                        nextZoom = newZoom;
-                        nextCropImage.x = nextCropImage.x - (nextImageWidth - imageWidth) / 2;
-                        nextCropImage.y = nextCrop.y;
-                    }
-                }
-            }
-        } else if (diffY < 0) {
-            if (imageWidth >= minWidth) {
-                const lWZoom = nextCrop.width / imageCrop.width;
-                const lHZoom = nextCrop.height / imageCrop.height;
-                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                const nextImageWidth = imageCrop.width * newZoom;
-
-                if (nextCrop.height < imageHeight) {
-                    if (nextCrop.y + nextCrop.height > nextCropImage.y + imageHeight) {
-                        nextCropImage.y = nextCropImage.y - (nextCrop.height - prevCrop.height);
-                    }
-                } else {
-                    if (nextImageWidth > minWidth) {
-                        nextZoom = newZoom;
-                        nextCropImage.x = nextCropImage.x - (nextImageWidth - imageWidth) / 2;
-                        nextCropImage.y = nextCrop.y;
-                    }
-                }
-            }
-        }
-
-        return {
-            zoom: nextZoom,
-            cropImage: nextCropImage,
-        }
-    }
-    public moveCrop = (type: DragItemType, cursor: Pos2d, crop: Crop, area: HTMLDivElement, aspectRatio: number | null): Crop => {
-        const minHeight = this.minSize.height;
-        const minWidth = aspectRatio === null ? this.minSize.width : minHeight * aspectRatio;
-
-        const rect = area.getBoundingClientRect();
-
-        const rawX = cursor.x - rect.left;
-        const rawY = cursor.y - rect.top;
-
-        let x = crop.x;
-        let y = crop.y;
-        let width = crop.width;
-        let height = crop.height;
-
-        if (type === 'lt') {
-            if (aspectRatio === null) {
-                x = rawX < 0 ? 0 : rawX;
-                y = rawY < 0 ? 0 : rawY;
-
-                height = crop.height - (y - crop.y);
-                width = crop.width - (x - crop.x);
-            } else {
-                y = rawY < 0 ? 0 : rawY;
-
-                height = crop.height - (y - crop.y);
-                width = height * aspectRatio;
-
-                x = crop.x + (crop.width - width)
-            }
-
-            if (width < minWidth) {
-                x = crop.x;
-                width = crop.width;
-            }
-            if (height < minHeight) {
-                y = crop.y;
-                height = crop.height;
-            }
-        }
-        else if (type === 'rt') {
-            if (aspectRatio === null) {
-                y = rawY < 0 ? 0 : rawY;
-
-                width = rawX - crop.x;
-                height = crop.height - (y - crop.y);
-            } else {
-                y = rawY < 0 ? 0 : rawY;
-
-                height = crop.height - (y - crop.y);
-                width = height * aspectRatio;
-            }
-
-            if (width < minWidth) {
-                width = crop.width;
-            }
-            if (crop.x + width > rect.width) {
-                width = crop.width;
-            }
-            if (height < minHeight) {
-                y = crop.y;
-                height = crop.height;
-            }
-        }
-        else if (type === 'lb') {
-            if (aspectRatio === null) {
-                x = rawX < 0 ? 0 : rawX;
-
-                width = crop.width - (x - crop.x);
-                height = rawY - crop.y;
-            } else {
-                height = rawY - crop.y;
-
-                // TODO duplicate lines
-                if (height < minHeight) {
-                    height = crop.height;
-                }
-                if (crop.y + height > rect.height) {
-                    height = crop.height;
-                }
-
-                width = height * aspectRatio;
-
-                x = crop.x + (crop.width - width);
-            }
-
-            if (width < minWidth) {
-                x = crop.x;
-                width = crop.width;
-            }
-            if (height < minHeight) {
-                height = crop.height;
-            }
-            if (crop.y + height > rect.height) {
-                height = crop.height;
-            }
-        }
-        else if (type === 'rb') {
-            if (aspectRatio === null) {
-                width = rawX - crop.x;
-                height = rawY - crop.y;
-            } else {
-                height = rawY - crop.y;
-
-                // TODO duplicate lines
-                if (height < minHeight) {
-                    height = crop.height;
-                }
-                if (crop.y + height > rect.height) {
-                    height = crop.height;
-                }
-
-                width = height * aspectRatio;
-            }
-
-            if (width < minWidth) {
-                width = crop.width;
-            }
-            if (crop.x + width > rect.width) {
-                width = crop.width;
-            }
-            if (height < minHeight) {
-                height = crop.height;
-            }
-            if (crop.y + height > rect.height) {
-                height = crop.height;
-            }
-        }
-
-        return {
-            width,
-            height,
-            x,
-            y,
-        };
-    }
-    public moveImage = (cursor: Pos2d, dragged: DraggedData, crop: Crop, imageCrop: Crop, zoom: number): Crop => {
-        const nextImage = {...imageCrop};
-
-        const diffX = cursor.x - dragged.data.x;
-        const diffY = cursor.y - dragged.data.y;
-
-        const nextX = nextImage.x + diffX;
-        const nextY = nextImage.y + diffY;
-
-        if (nextX <= crop.x && nextX + imageCrop.width * zoom > (crop.x + crop.width)) {
-            nextImage.x = nextX;
-        }
-        if (nextY <= crop.y && nextY + imageCrop.height * zoom > (crop.y + crop.height)) {
-            nextImage.y = nextY;
-        }
-
-        return nextImage;
-    }
+    protected scaleZoomImage = cropperImageScale;
+    protected moveCrop = cropMove;
+    protected moveImage =  imageMove;
+    protected getDefaultConfig = getDefaultCropperConfig;
+    protected zoomTo = cropperZoomTo;
 
     public setDragged = (type: DragItemType, data: { x: number, y: number; }) => {
         this.dragged = {type, data};
@@ -684,15 +374,11 @@ class CropManager {
     }
 
     public changeAspectRatio = (aspectRatio: number | null) => {
-        const newConfig = this.getConfig(this.defaultImage!, this.area, aspectRatio);
+        const newConfig = this.getDefaultConfig(this.image!, this.area, aspectRatio);
 
         this.changeState(newConfig);
     }
 
-    // helpers
-    public round = (v: number) => {
-        return Math.round(v * 1000) / 1000;
-    }
     public save = () => {
         localStorage.setItem('test', JSON.stringify(this.store.get()));
     }
