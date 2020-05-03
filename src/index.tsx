@@ -101,6 +101,7 @@ const store = createStore<CropManagerState>({
     angle: 0,
     flipX: false,
     flipY: false,
+    aspectRatio: 1.6,
 });
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -122,6 +123,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
             document.addEventListener('mousemove', this.onMouseMove);
             document.addEventListener('mouseup', this.onMouseUp);
+            document.addEventListener('mouseleave', this.onMouseUp);
             this.cropGrid.addEventListener('wheel', this.onMouseWheel);
 
             this.manager.loadImage(this.props.src);
@@ -131,6 +133,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
     public componentWillUnmount(): void {
         document.removeEventListener('mousemove', this.onMouseMove);
         document.removeEventListener('mouseup', this.onMouseUp);
+        document.removeEventListener('mouseleave', this.onMouseUp);
 
         if (this.cropGrid) {
             this.cropGrid.removeEventListener('wheel', this.onMouseWheel);
@@ -255,6 +258,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         startIcon={<AspectRatioIcon/>}
                         variant='outlined'
                         color='inherit'
+                        onClick={() => this.manager!.changeAspectRatio(null)}
                     >Aspect ratio</Button>
                 </Toolbar>
 

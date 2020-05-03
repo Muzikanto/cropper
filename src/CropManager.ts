@@ -39,6 +39,7 @@ class CropManager {
     public dragged: DraggedData | null = null;
     public store: Store<CropManagerState>;
     public defaultState: CropManagerState;
+    public currentZoom: number = 1;
 
     constructor(store: Store<CropManagerState>, canvas: HTMLCanvasElement, area: HTMLDivElement) {
         this.canvas = canvas;
@@ -70,15 +71,19 @@ class CropManager {
         image.onload = () => {
             const savedConfig = localStorage.getItem('test');
 
-            const defaultConfig = this.getDefaultConfig();
+            const defaultConfig = {
+                ...this.store.get(),
+                ...this.getConfig(this.defaultImage!, this.area, this.store.get().aspectRatio),
+            };
 
-            if (savedConfig && false) {
+            if (savedConfig) {
                 const nextState = JSON.parse(savedConfig);
                 this.changeState(nextState);
             } else {
                 this.changeState(defaultConfig);
             }
 
+            this.currentZoom = defaultConfig.zoom;
             this.defaultState = defaultConfig;
         };
     }
@@ -157,10 +162,8 @@ class CropManager {
         ctx.restore();
     }
 
-    public getDefaultConfig = () => {
-        const aspectRatio = 1.6;
-        const image = this.defaultImage!;
-        const rect = this.area.getBoundingClientRect();
+    protected getConfig = (image: HTMLImageElement, area: HTMLDivElement, aspectRatio: number | null): Pick<CropManagerState, 'crop' | 'imageCrop' | 'zoom' | 'aspectRatio'> => {
+        const rect = area.getBoundingClientRect();
 
         let zoom = aspectRatio ?
             aspectRatio > 1 ?
@@ -192,13 +195,7 @@ class CropManager {
                 height: imageHeight,
             },
             zoom,
-            initialChanged: false,
-            changed: false,
-            lastChanged: new Date(),
-            angle: 0,
-            flipX: false,
-            flipY: false,
-            aspectRatio: null,
+            aspectRatio,
         };
     }
 
@@ -225,223 +222,6 @@ class CropManager {
             x, y,
         };
     }
-
-    public move = (cursor: { x: number, y: number }) => {
-        const state = this.store.get();
-
-        const dragged = this.dragged;
-        const imageCrop = state.imageCrop;
-        const crop = state.crop;
-
-        if (dragged) {
-            if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
-                const rect = this.area.getBoundingClientRect();
-
-                const rawX = cursor.x - rect.left;
-                const rawY = cursor.y - rect.top;
-
-                const nextImage = {...imageCrop};
-                const nextCrop = {...crop};
-                let zoom = state.zoom;
-
-                // crop params
-                if (dragged.type === 'lt') {
-                    nextCrop.x = rawX < 0 ? 0 : rawX;
-                    nextCrop.y = rawY < 0 ? 0 : rawY;
-
-                    nextCrop.width = crop.width - (nextCrop.x - crop.x);
-                    nextCrop.height = crop.height - (nextCrop.y - crop.y);
-
-                    if (nextCrop.width < 50) {
-                        nextCrop.x = crop.x;
-                        nextCrop.width = crop.width;
-                    }
-                    if (nextCrop.height < 50) {
-                        nextCrop.y = crop.y;
-                        nextCrop.height = crop.height;
-                    }
-                } else if (dragged.type === 'rt') {
-                    nextCrop.y = rawY < 0 ? 0 : rawY;
-
-                    nextCrop.width = rawX - crop.x;
-                    nextCrop.height = crop.height - (nextCrop.y - crop.y);
-
-                    if (nextCrop.width < 50) {
-                        nextCrop.width = crop.width;
-                    }
-                    if (crop.x + nextCrop.width > rect.width) {
-                        nextCrop.width = crop.width;
-                    }
-                    if (nextCrop.height < 50) {
-                        nextCrop.y = crop.y;
-                        nextCrop.height = crop.height;
-                    }
-                } else if (dragged.type === 'lb') {
-                    nextCrop.x = rawX < 0 ? 0 : rawX;
-
-                    nextCrop.width = crop.width - (nextCrop.x - crop.x);
-                    nextCrop.height = rawY - crop.y;
-
-                    if (nextCrop.width < 50) {
-                        nextCrop.x = crop.x;
-                        nextCrop.width = crop.width;
-                    }
-                    if (nextCrop.height < 50) {
-                        nextCrop.height = crop.height;
-                    }
-                    if (crop.y + nextCrop.height > rect.height) {
-                        nextCrop.height = crop.height;
-                    }
-                } else if (dragged.type === 'rb') {
-                    nextCrop.width = rawX - crop.x;
-                    nextCrop.height = rawY - crop.y;
-
-                    if (nextCrop.width < 50) {
-                        nextCrop.width = crop.width;
-                    }
-                    if (crop.x + nextCrop.width > rect.width) {
-                        nextCrop.width = crop.width;
-                    }
-                    if (nextCrop.height < 50) {
-                        nextCrop.height = crop.height;
-                    }
-                    if (crop.y + nextCrop.height > rect.height) {
-                        nextCrop.height = crop.height;
-                    }
-                }
-                // -----------
-
-                // scale
-                const defaultZoom = rect.height / imageCrop.height;
-
-                const rectWidth = this.round(imageCrop.width * this.defaultState.zoom * (state.zoom / defaultZoom));
-                const rectHeight = this.round(imageCrop.height * this.defaultState.zoom * (state.zoom / defaultZoom));
-
-                const imageWidth = this.round(imageCrop.width * state.zoom);
-                const imageHeight = this.round(imageCrop.height * state.zoom);
-
-                const diffX = crop.x - nextCrop.x || crop.width - nextCrop.width;
-                const diffY = crop.y - nextCrop.y || crop.height - nextCrop.height;
-
-                if (diffX > 0) {
-                    if (imageHeight >= rectHeight) {
-                        const lWZoom = nextCrop.width / imageCrop.width;
-                        const lHZoom = nextCrop.height / imageCrop.height;
-                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                        const nextImageHeight = imageCrop.height * nextZoom;
-
-                        if (nextCrop.width < imageWidth) {
-                            if (nextCrop.x < nextImage.x) {
-                                nextImage.x = nextImage.x + (nextCrop.x - crop.x);
-                            }
-                        } else {
-                            if (nextImageHeight > rectHeight) {
-                                zoom = nextZoom;
-                                nextImage.x = nextCrop.x;
-                                nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
-                            }
-                        }
-                    }
-                } else if (diffX < 0) {
-                    if (imageHeight >= rectHeight) {
-                        const lWZoom = nextCrop.width / imageCrop.width;
-                        const lHZoom = nextCrop.height / imageCrop.height;
-                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                        const nextImageHeight = imageCrop.height * nextZoom;
-
-                        if (nextCrop.width < imageWidth) {
-                            if (nextCrop.x + nextCrop.width > nextImage.x + imageWidth) {
-                                nextImage.x = nextImage.x + (nextCrop.width - crop.width);
-                            }
-                        } else {
-                            if (nextImageHeight > rectHeight) {
-                                zoom = nextZoom;
-                                nextImage.x = nextCrop.x;
-                                nextImage.y = nextImage.y - (nextImageHeight - imageHeight) / 2;
-                            }
-                        }
-                    }
-                }
-
-                if (diffY > 0) {
-                    if (imageWidth >= rectWidth) {
-                        const lWZoom = nextCrop.width / imageCrop.width;
-                        const lHZoom = nextCrop.height / imageCrop.height;
-                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                        const nextImageWidth = imageCrop.width * nextZoom;
-                        const nextImageHeight = imageCrop.height * nextZoom;
-
-                        if (nextCrop.height < imageHeight) {
-                            if (nextCrop.y < nextImage.y) {
-                                nextImage.y = nextCrop.y;
-                            }
-                        } else {
-                            if (nextImageWidth > rectWidth) {
-                                zoom = nextZoom;
-                                nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
-                                nextImage.y = nextImage.y - (nextImageHeight - imageHeight);
-                            }
-                        }
-                    }
-                } else if (diffY < 0) {
-                    if (imageWidth >= rectWidth) {
-                        const lWZoom = nextCrop.width / imageCrop.width;
-                        const lHZoom = nextCrop.height / imageCrop.height;
-                        const nextZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
-
-                        const nextImageWidth = imageCrop.width * nextZoom;
-
-                        if (nextCrop.height < imageHeight) {
-                            if (nextCrop.y + nextCrop.height > nextImage.y + imageHeight) {
-                                nextImage.y = nextImage.y - (nextCrop.height - crop.height);
-                            }
-                        } else {
-                            if (nextImageWidth > rectWidth) {
-                                zoom = nextZoom;
-                                nextImage.x = nextImage.x - (nextImageWidth - imageWidth) / 2;
-                                nextImage.y = nextCrop.y;
-                            }
-                        }
-                    }
-                }
-                // -----------
-
-                this.changeState({
-                    imageCrop: nextImage,
-                    crop: nextCrop,
-                    zoom,
-                });
-            } else {
-                if (dragged.type === 'image') {
-                    const nextImage = {...state.imageCrop};
-
-                    const diffX = cursor.x - dragged.data.x;
-                    const diffY = cursor.y - dragged.data.y;
-
-                    const nextX = nextImage.x + diffX;
-                    const nextY = nextImage.y + diffY;
-
-                    if (nextX <= crop.x && nextX + imageCrop.width * state.zoom > (crop.x + crop.width)) {
-                        nextImage.x = nextX;
-                    }
-                    if (nextY <= crop.y && nextY + imageCrop.height * state.zoom > (crop.y + crop.height)) {
-                        nextImage.y = nextY;
-                    }
-
-                    this.dragged!.data = cursor;
-                    this.changeState({
-                        imageCrop: nextImage,
-                    });
-                }
-            }
-        }
-
-        return null;
-    }
-
     public zoom = (deltaY: number) => {
         const state = this.store.get();
 
@@ -553,16 +333,253 @@ class CropManager {
             }
         }
 
+        this.currentZoom = zoom;
         this.changeState({
             imageCrop: nextImage,
             zoom,
         });
     }
 
+    public move = (cursor: { x: number, y: number }) => {
+        const state = this.store.get();
+
+        const dragged = this.dragged;
+        const imageCrop = state.imageCrop;
+        const crop = state.crop;
+
+        if (dragged) {
+            if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
+                const nextCrop = this.moveCrop(dragged.type, cursor, crop, this.area);
+                const {
+                    zoom: nextZoom,
+                    cropImage: nextCropImage,
+                } = this.scaleZoomImage(crop, nextCrop, imageCrop, state.zoom);
+
+                this.changeState({
+                    imageCrop: nextCropImage,
+                    crop: nextCrop,
+                    zoom: nextZoom,
+                });
+            } else {
+                if (dragged.type === 'image') {
+                    const nextImage = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom);
+
+                    this.dragged!.data = cursor;
+                    this.changeState({
+                        imageCrop: nextImage,
+                    });
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public scaleZoomImage = (prevCrop: Crop, nextCrop: Crop, imageCrop: Crop, zoom: number) => {
+        const nextCropImage = {...imageCrop};
+        let nextZoom = zoom;
+
+        const minWidth = this.round(imageCrop.width * this.currentZoom);
+        const minHeight = this.round(imageCrop.height * this.currentZoom);
+
+        const imageWidth = this.round(imageCrop.width * zoom);
+        const imageHeight = this.round(imageCrop.height * zoom);
+
+        const diffX = prevCrop.x - nextCrop.x || nextCrop.width - prevCrop.width;
+        const diffY = prevCrop.y - nextCrop.y || nextCrop.height - prevCrop.height;
+
+        if (diffX > 0) {
+            if (imageHeight >= minHeight) {
+                const lWZoom = nextCrop.width / imageCrop.width;
+                const lHZoom = nextCrop.height / imageCrop.height;
+                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+
+                const nextImageHeight = imageCrop.height * newZoom;
+
+                if (nextCrop.width < imageWidth) {
+                    if (nextCrop.x < nextCropImage.x) {
+                        nextCropImage.x = nextCropImage.x + (nextCrop.x - prevCrop.x);
+                    } else if (nextCrop.x + nextCrop.width > nextCropImage.x + imageWidth) {
+                        nextCropImage.x = nextCropImage.x + (nextCrop.width - prevCrop.width);
+                    }
+                } else {
+                    if (nextImageHeight > minHeight) {
+                        nextZoom = newZoom;
+                        nextCropImage.x = nextCrop.x;
+                        nextCropImage.y = nextCropImage.y - (nextImageHeight - imageHeight) / 2;
+                    }
+                }
+            }
+        } else if (diffX < 0) {
+            if (imageHeight >= minHeight) {
+                const lWZoom = nextCrop.width / imageCrop.width;
+                const lHZoom = nextCrop.height / imageCrop.height;
+                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+
+                const nextImageHeight = imageCrop.height * newZoom;
+
+                if (nextCrop.width > imageWidth) {
+                    if (nextCrop.x + nextCrop.width > nextCropImage.x + imageWidth) {
+                        nextCropImage.x = nextCropImage.x + (nextCrop.width - prevCrop.width);
+                    }
+                } else {
+                    if (nextImageHeight > minHeight) {
+                        nextZoom = newZoom;
+                        nextCropImage.x = nextCrop.x;
+                        nextCropImage.y = nextCropImage.y - (nextImageHeight - imageHeight) / 2;
+                    }
+                }
+            }
+        }
+
+        if (diffY > 0) {
+            if (imageWidth >= minWidth) {
+                const lWZoom = nextCrop.width / imageCrop.width;
+                const lHZoom = nextCrop.height / imageCrop.height;
+                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+
+                const nextImageWidth = imageCrop.width * newZoom;
+                const nextImageHeight = imageCrop.height * newZoom;
+
+                if (nextCrop.height < imageHeight) {
+                    if (nextCrop.y < nextCropImage.y) {
+                        nextCropImage.y = nextCrop.y;
+                    } else if (nextCrop.y + nextCrop.height > nextCropImage.y + imageHeight) {
+                        nextCropImage.y = nextCropImage.y - (prevCrop.height - nextCrop.height);
+                    }
+                } else {
+                    if (nextImageWidth > minWidth) {
+                        nextZoom = newZoom;
+                        nextCropImage.x = nextCropImage.x - (nextImageWidth - imageWidth) / 2;
+                        // TODO тут ошибка
+                        nextCropImage.y = nextCropImage.y - (nextImageHeight - imageHeight) / 2;
+                    }
+                }
+            }
+        } else if (diffY < 0) {
+            if (imageWidth >= minWidth) {
+                const lWZoom = nextCrop.width / imageCrop.width;
+                const lHZoom = nextCrop.height / imageCrop.height;
+                const newZoom = lWZoom > lHZoom ? lWZoom : lHZoom;
+
+                const nextImageWidth = imageCrop.width * newZoom;
+
+                if (nextCrop.height < imageHeight) {
+                    if (nextCrop.y + nextCrop.height > nextCropImage.y + imageHeight) {
+                        nextCropImage.y = nextCropImage.y - (nextCrop.height - prevCrop.height);
+                    }
+                } else {
+                    if (nextImageWidth > minWidth) {
+                        nextZoom = newZoom;
+                        nextCropImage.x = nextCropImage.x - (nextImageWidth - imageWidth) / 2;
+                        nextCropImage.y = nextCrop.y;
+                    }
+                }
+            }
+        }
+
+        return {
+            zoom: nextZoom,
+            cropImage: nextCropImage,
+        }
+    }
+    public moveCrop = (type: DragItemType, cursor: Pos2d, crop: Crop, area: HTMLDivElement): Crop => {
+        const nextCrop = {...crop};
+
+        const rect = area.getBoundingClientRect();
+
+        const rawX = cursor.x - rect.left;
+        const rawY = cursor.y - rect.top;
+
+        if (type === 'lt') {
+            nextCrop.x = rawX < 0 ? 0 : rawX;
+            nextCrop.y = rawY < 0 ? 0 : rawY;
+
+            nextCrop.width = crop.width - (nextCrop.x - crop.x);
+            nextCrop.height = crop.height - (nextCrop.y - crop.y);
+
+            if (nextCrop.width < 50) {
+                nextCrop.x = crop.x;
+                nextCrop.width = crop.width;
+            }
+            if (nextCrop.height < 50) {
+                nextCrop.y = crop.y;
+                nextCrop.height = crop.height;
+            }
+        } else if (type === 'rt') {
+            nextCrop.y = rawY < 0 ? 0 : rawY;
+
+            nextCrop.width = rawX - crop.x;
+            nextCrop.height = crop.height - (nextCrop.y - crop.y);
+
+            if (nextCrop.width < 50) {
+                nextCrop.width = crop.width;
+            }
+            if (crop.x + nextCrop.width > rect.width) {
+                nextCrop.width = crop.width;
+            }
+            if (nextCrop.height < 50) {
+                nextCrop.y = crop.y;
+                nextCrop.height = crop.height;
+            }
+        } else if (type === 'lb') {
+            nextCrop.x = rawX < 0 ? 0 : rawX;
+
+            nextCrop.width = crop.width - (nextCrop.x - crop.x);
+            nextCrop.height = rawY - crop.y;
+
+            if (nextCrop.width < 50) {
+                nextCrop.x = crop.x;
+                nextCrop.width = crop.width;
+            }
+            if (nextCrop.height < 50) {
+                nextCrop.height = crop.height;
+            }
+            if (crop.y + nextCrop.height > rect.height) {
+                nextCrop.height = crop.height;
+            }
+        } else if (type === 'rb') {
+            nextCrop.width = rawX - crop.x;
+            nextCrop.height = rawY - crop.y;
+
+            if (nextCrop.width < 50) {
+                nextCrop.width = crop.width;
+            }
+            if (crop.x + nextCrop.width > rect.width) {
+                nextCrop.width = crop.width;
+            }
+            if (nextCrop.height < 50) {
+                nextCrop.height = crop.height;
+            }
+            if (crop.y + nextCrop.height > rect.height) {
+                nextCrop.height = crop.height;
+            }
+        }
+
+        return nextCrop;
+    }
+    public moveImage = (cursor: Pos2d, dragged: DraggedData, crop: Crop, imageCrop: Crop, zoom: number): Crop => {
+        const nextImage = {...imageCrop};
+
+        const diffX = cursor.x - dragged.data.x;
+        const diffY = cursor.y - dragged.data.y;
+
+        const nextX = nextImage.x + diffX;
+        const nextY = nextImage.y + diffY;
+
+        if (nextX <= crop.x && nextX + imageCrop.width * zoom > (crop.x + crop.width)) {
+            nextImage.x = nextX;
+        }
+        if (nextY <= crop.y && nextY + imageCrop.height * zoom > (crop.y + crop.height)) {
+            nextImage.y = nextY;
+        }
+
+        return nextImage;
+    }
+
     public setDragged = (type: DragItemType, data: { x: number, y: number; }) => {
         this.dragged = {type, data};
     }
-
     public clearDragged = () => {
         this.dragged = null;
     }
@@ -570,14 +587,6 @@ class CropManager {
     public refreshState = () => {
         this.store.set(this.defaultState);
         this.drawImage();
-    }
-
-    public save = () => {
-        localStorage.setItem('test', JSON.stringify(this.store.get()));
-    }
-
-    public round = (v: number) => {
-        return Math.round(v * 1000) / 1000;
     }
 
     public rotate = (angle: number) => {
@@ -596,6 +605,20 @@ class CropManager {
     }
     public flipY = () => {
         this.changeState({flipY: !this.store.get().flipY});
+    }
+
+    public changeAspectRatio = (aspectRatio: number | null) => {
+        const newConfig = this.getConfig(this.defaultImage!, this.area, aspectRatio);
+
+        this.changeState(newConfig);
+    }
+
+    // helpers
+    public round = (v: number) => {
+        return Math.round(v * 1000) / 1000;
+    }
+    public save = () => {
+        localStorage.setItem('test', JSON.stringify(this.store.get()));
     }
 }
 
