@@ -600,6 +600,14 @@ class CropManager {
         this.rotate(nextAngle);
     }
 
+    public rotateRight = () => {
+        const state = this.store.get();
+
+        const nextAngle = (state.angle - 90) % 360;
+
+        this.rotate(nextAngle);
+    }
+
     public flipX = () => {
         this.changeState({flipX: !this.store.get().flipX});
     }

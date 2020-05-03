@@ -1,27 +1,15 @@
 import React from 'react';
 import Box from '@material-ui/core/Box';
-import Toolbar from '@material-ui/core/Toolbar';
 import withStyles from '@material-ui/core/styles/withStyles';
 import {WithStyles} from '@material-ui/styles';
-import Button from '@material-ui/core/Button';
-import Tabs from '@material-ui/core/Tabs';
-import Tab from '@material-ui/core/Tab';
-import IconButton from '@material-ui/core/IconButton';
-import RotateLeftIcon from '@material-ui/icons/RotateLeft';
-import FlipIcon from '@material-ui/icons/Flip';
-import AspectRatioIcon from '@material-ui/icons/AspectRatio';
-import RestoreIcon from '@material-ui/icons/Restore';
-import CropIcon from '@material-ui/icons/Crop';
-import CropManager, {Crop, CropManagerState, DragItemType} from './CropManager';
+import CropManager, {Crop, CropManagerState} from './CropManager';
 import createStore from "@muzikanto/observable/createStore";
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
-import {Popover} from "@material-ui/core";
-import Paper from "@material-ui/core/Paper";
-import CropFreeIcon from '@material-ui/icons/CropFree';
-import CropLandscapeIcon from '@material-ui/icons/CropLandscape';
-import CropPortraitIcon from '@material-ui/icons/CropPortrait';
-import CropSquareIcon from '@material-ui/icons/CropSquare';
-
+import CropperSubBarCrop from "./blocks/CropperSubBarCrop";
+import CropperToolbar from "./blocks/CropperToolbar";
+import CropperGrid from "./blocks/CropperGrid";
+import CropperRotate from './blocks/CropperRotate/CropperRotate.container';
+import CropperTab from "./blocks/CropperTab";
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -34,59 +22,14 @@ const styles = () => ({
         borderRadius: 10,
         boxShadow: '0 0.65rem 0.5rem -0.5rem rgba(0,0,0,.5), 0 0.75rem 3rem rgba(0,0,0,.5)',
     },
-    toolbar: {
-        height: 76, zIndex: 1, display: 'flex', justifyContent: 'space-between',
-    },
-    subToolbar: {
-        height: 72, display: 'flex', justifyContent: 'center',
-    },
-    btn: {
-        zIndex: 1, color: 'white', marginLeft: 7, marginRight: 7,
-    },
-    crop: {
-        zIndex: 1,
-        userSelect: 'none',
-        height: 296,
-        margin: '4px 24px 24px 24px',
-        position: 'relative',
-    },
-    tab: {
-        minWidth: 72,
-        marginLeft: 5,
-        marginRight: 5,
-    },
-    cropGrid: {
-        boxSizing: 'border-box',
-        position: 'absolute',
-        border: 'solid 1px white',
-        cursor: 'move',
+    subBar: {
+        height: 72,
     },
     canvas: {
         borderRadius: 10,
         position: 'absolute',
         top: 0,
         left: 0,
-    },
-    circle: {
-        zIndex: 1,
-        position: 'absolute',
-        width: 50,
-        height: 50,
-        borderRadius: '50%',
-        cursor: 'pointer',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    circleIcon: {
-        background: 'white',
-        width: 20,
-        height: 20,
-        borderRadius: '50%',
-    },
-    line: {
-        position: 'absolute',
-        background: '#f7f7f799',
     },
 } as const);
 
@@ -96,7 +39,6 @@ export interface CropperProps extends WithStyles<typeof styles> {
 
 export interface CropperState {
     tab: number;
-    aspectRatio: HTMLElement | null;
 }
 
 const store = createStore<CropManagerState>({
@@ -113,26 +55,22 @@ const store = createStore<CropManagerState>({
 });
 
 class Cropper extends React.Component<CropperProps, CropperState> {
-    public cropArea: HTMLDivElement | null = null;
-    public cropGrid: HTMLDivElement | null = null;
-    public canvas: HTMLCanvasElement | null = null;
+    public gridRef: HTMLDivElement | null = null;
+    public areaRef: HTMLDivElement | null = null;
+    public canvasRef: HTMLCanvasElement | null = null;
 
-    public state = {tab: 0, aspectRatio: null};
+    public state = {tab: 0};
 
     protected manager: CropManager | null = null;
 
-    protected refreshConfig = () => {
-        this.manager!.refreshState();
-    }
-
     public componentDidMount(): void {
-        if (this.cropArea && this.canvas && this.cropGrid) {
-            this.manager = new CropManager(store, this.canvas, this.cropArea);
+        if (this.areaRef && this.canvasRef && this.gridRef) {
+            this.manager = new CropManager(store, this.canvasRef, this.areaRef);
 
             document.addEventListener('mousemove', this.onMouseMove);
-            document.addEventListener('mouseup', this.onMouseUp);
-            document.addEventListener('mouseleave', this.onMouseUp);
-            this.cropGrid.addEventListener('wheel', this.onMouseWheel);
+            document.addEventListener('mouseup', this.clearDragged);
+            document.addEventListener('mouseleave', this.clearDragged);
+            this.gridRef.addEventListener('wheel', this.onMouseWheel);
 
             this.manager.loadImage(this.props.src);
         }
@@ -140,23 +78,76 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public componentWillUnmount(): void {
         document.removeEventListener('mousemove', this.onMouseMove);
-        document.removeEventListener('mouseup', this.onMouseUp);
-        document.removeEventListener('mouseleave', this.onMouseUp);
+        document.removeEventListener('mouseup', this.clearDragged);
+        document.removeEventListener('mouseleave', this.clearDragged);
 
-        if (this.cropGrid) {
-            this.cropGrid.removeEventListener('wheel', this.onMouseWheel);
+        if (this.gridRef) {
+            this.gridRef.removeEventListener('wheel', this.onMouseWheel);
         }
     }
 
-    protected onMouseDown = (drag: DragItemType) => (e: any) => {
-        e.preventDefault();
-        e.stopPropagation();
+    public render() {
+        const {classes} = this.props;
+        const {tab} = this.state;
 
-        this.manager!.setDragged(drag, {x: e.clientX, y: e.clientY});
-    };
-    protected onMouseUp = () => {
+        return (
+            <Box
+                width={928}
+                height={528}
+                className={classes.root}
+            >
+                <CropperToolbar
+                    store={store}
+                    tab={tab}
+                    onChangeTab={(v) => this.setState((prevState) => ({...prevState, tab: v}))}
+                    onRefresh={() => this.manager!.refreshState()}
+                />
+
+                <CropperTab tab={this.state.tab} value={0}>
+                    <CropperSubBarCrop
+                        className={classes.subBar}
+                        store={store}
+
+                        onAspectRatio={v => this.manager!.changeAspectRatio(v)}
+                        onFlipX={() => this.manager!.flipX()}
+                        onFlipY={() => this.manager!.flipY()}
+                        onRotateLeft={() => this.manager!.rotateLeft()}
+                        onRotateRight={() => this.manager!.rotateRight()}
+                    />
+
+                    <StoreConsumer store={store} selector={s => s.crop}>
+                        {
+                            (crop: Crop) => {
+                                return (
+                                    <CropperGrid
+                                        crop={crop}
+                                        onMouseUp={this.clearDragged}
+                                        onMouseDown={(type, data) => this.manager!.setDragged(type, data)}
+                                        areaRef={areaRef => this.areaRef = areaRef}
+                                        gridRef={gridRef => this.gridRef = gridRef}
+                                    />
+                                );
+                            }
+                        }
+                    </StoreConsumer>
+
+                    <CropperRotate/>
+                </CropperTab>
+
+                <canvas
+                    ref={canvasRef => this.canvasRef = canvasRef}
+                    className={classes.canvas}
+                    width={928}
+                    height={528}
+                />
+            </Box>
+        );
+    }
+
+    protected clearDragged = () => {
         this.manager!.clearDragged();
     };
+
     protected onMouseMove = (e: any) => {
         this.manager!.move(
             {x: e.clientX, y: e.clientY},
@@ -170,229 +161,6 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         this.manager!.zoom(e.deltaY);
     }
 
-    public render() {
-        const {classes} = this.props;
-        const {tab} = this.state;
-
-        return (
-            <Box
-                width={928}
-                height={528}
-                className={classes.root}
-            >
-                <Toolbar className={classes.toolbar}>
-                    <StoreConsumer store={store} selector={s => s.changed}>
-                        {
-                            (changed: boolean) => {
-                                if (changed) {
-                                    return (
-                                        <IconButton
-                                            color='inherit'
-                                            style={{
-                                                color: 'white', backgroundColor: '#ffffff26',
-                                            }}
-                                            onClick={() => {
-                                                this.refreshConfig();
-                                            }}
-                                        >
-                                            <RestoreIcon/>
-                                        </IconButton>
-                                    );
-                                } else {
-                                    return (
-                                        <div style={{width: 48, height: 48}}/>
-                                    );
-                                }
-                            }
-                        }
-                    </StoreConsumer>
-                    <Tabs
-                        value={tab}
-                        onChange={(_, v) => {
-                            if (v === -1) {
-                                this.manager!.save();
-                            } else {
-                                this.setState((prevState) => ({...prevState, tab: v}));
-                            }
-                        }}
-                        textColor='inherit'
-                        style={{color: 'white'}}
-                    >
-                        <Tab label='Crop' icon={<CropIcon/>} className={classes.tab}/>
-                        <Tab label='Save' value={-1} className={classes.tab}/>
-                    </Tabs>
-                    <Button
-                        style={{backgroundColor: '#ffd843'}}
-                        variant='contained'
-                    >Done</Button>
-                </Toolbar>
-
-                <Toolbar className={classes.subToolbar}>
-                    <Button
-                        className={classes.btn}
-                        startIcon={<RotateLeftIcon/>}
-                        variant='outlined'
-                        color='inherit'
-                        onClick={() => this.manager!.rotateLeft()}
-                    >Rotate left</Button>
-                    <StoreConsumer store={store} selector={s => s.flipX}>
-                        {
-                            (flipX: boolean) => (
-                                <Button
-                                    className={classes.btn}
-                                    startIcon={<FlipIcon style={{transform: `rotate(${flipX ? 180 : 0}deg)`}}/>}
-                                    variant='outlined'
-                                    color='inherit'
-                                    onClick={() => this.manager!.flipX()}
-                                >Flip horizontal</Button>
-                            )
-                        }
-                    </StoreConsumer>
-                    <StoreConsumer store={store} selector={s => s.flipY}>
-                        {
-                            (flipY: boolean) => (
-                                <Button
-                                    className={classes.btn}
-                                    startIcon={<FlipIcon style={{transform: `rotate(${flipY ? 270 : 90}deg)`}}/>}
-                                    variant='outlined'
-                                    color='inherit'
-                                    onClick={() => this.manager!.flipY()}
-                                >Flip vertical</Button>
-                            )
-                        }
-                    </StoreConsumer>
-                    <Button
-                        className={classes.btn}
-                        startIcon={<AspectRatioIcon/>}
-                        variant='outlined'
-                        color='inherit'
-                        onClick={(e) => {
-                            this.setState({...this.state, aspectRatio: e.currentTarget});
-                            // this.manager!.changeAspectRatio(null);
-                        }}
-                    >Aspect ratio</Button>
-                    <Popover
-                        open={Boolean(this.state.aspectRatio)}
-                        anchorEl={this.state.aspectRatio}
-                        onClose={() => this.setState(p => ({...p, aspectRatio: null}))}
-                        anchorOrigin={{
-                            vertical: 'bottom',
-                            horizontal: 'center',
-                        }}
-                        transformOrigin={{
-                            vertical: 'top',
-                            horizontal: 'center',
-                        }}
-                    >
-                        <Paper style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
-                            <Button
-                                startIcon={<CropFreeIcon/>}
-                                onClick={() => this.manager!.changeAspectRatio(null)}
-                            >Free</Button>
-                            <Button
-                                startIcon={<CropLandscapeIcon/>}
-                                onClick={() => this.manager!.changeAspectRatio(16 / 10)}
-                            >Landscape</Button>
-                            <Button
-                                startIcon={<CropPortraitIcon/>}
-                                onClick={() => this.manager!.changeAspectRatio(10 / 16)}
-                            >Portrait</Button>
-                            <Button
-                                startIcon={<CropSquareIcon/>}
-                                onClick={() => this.manager!.changeAspectRatio(1)}
-                            >Square</Button>
-                        </Paper>
-                    </Popover>
-                </Toolbar>
-
-                <StoreConsumer store={store} selector={s => s.crop}>
-                    {
-                        (crop: Crop) => {
-                            return (
-                                <div
-                                    className={classes.crop}
-                                    onMouseUp={this.onMouseUp}
-                                    ref={el => this.cropArea = el}
-                                >
-                                    <div
-                                        className={classes.cropGrid}
-                                        style={{
-                                            left: crop.x,
-                                            top: crop.y,
-                                            width: crop.width,
-                                            height: crop.height,
-                                        }}
-                                        ref={r => this.cropGrid = r}
-                                        onMouseDown={this.onMouseDown('image')}
-                                    >
-                                        <Box
-                                            style={{
-                                                left: 0,
-                                                top: 0,
-                                                transform: 'translate(-50%, -50%)',
-                                                cursor: 'nwse-resize'
-                                            }}
-                                            className={classes.circle}
-                                            onMouseDown={this.onMouseDown('lt')}
-                                        >
-                                            <div className={classes.circleIcon}/>
-                                        </Box>
-                                        <Box
-                                            style={{
-                                                right: 0,
-                                                top: 0,
-                                                transform: 'translate(50%, -50%)',
-                                                cursor: 'nesw-resize'
-                                            }}
-                                            className={classes.circle}
-                                            onMouseDown={this.onMouseDown('rt')}
-                                        >
-                                            <div className={classes.circleIcon}/>
-                                        </Box>
-                                        <Box
-                                            style={{
-                                                left: 0,
-                                                bottom: 0,
-                                                transform: 'translate(-50%, 50%)',
-                                                cursor: 'nesw-resize'
-                                            }}
-                                            className={classes.circle}
-                                            onMouseDown={this.onMouseDown('lb')}
-                                        >
-                                            <div className={classes.circleIcon}/>
-                                        </Box>
-                                        <Box
-                                            style={{
-                                                right: 0,
-                                                bottom: 0,
-                                                transform: 'translate(50%, 50%)',
-                                                cursor: 'nwse-resize'
-                                            }}
-                                            className={classes.circle}
-                                            onMouseDown={this.onMouseDown('rb')}
-                                        >
-                                            <div className={classes.circleIcon}/>
-                                        </Box>
-                                    </div>
-                                </div>
-                            );
-                        }
-                    }
-                </StoreConsumer>
-
-                <Box style={{height: 56}}>
-                    rotate
-                </Box>
-
-                <canvas
-                    ref={el => this.canvas = el}
-                    className={classes.canvas}
-                    width={928}
-                    height={528}
-                />
-            </Box>
-        );
-    }
 }
 
 export default withStyles(styles)(Cropper);
