@@ -6,7 +6,6 @@ import CropIcon from '@material-ui/icons/Crop';
 import CropperFilterIcon from './CropperFilterIcon';
 import CropperColorsIcon from './CropperColorsIcon';
 import ResizeIcon from '@material-ui/icons/PhotoSizeSelectLarge';
-import VisibilityIcon from '@material-ui/icons/Visibility';
 
 const useStyles = makeStyles(() => ({
     tabs: {
@@ -63,11 +62,6 @@ function CropperToolbarTabs(props: CropperToolbarTabsProps) {
             <Tab
                 label='Resize'
                 icon={<ResizeIcon/>}
-                className={classes.tab}
-            />
-            <Tab
-                label='Preview'
-                icon={<VisibilityIcon/>}
                 className={classes.tab}
             />
         </Tabs>

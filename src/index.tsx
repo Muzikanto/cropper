@@ -10,6 +10,7 @@ import CropperToolbar from "./blocks/CropperToolbar";
 import CropperGrid from "./blocks/CropperGrid";
 import CropperRotate from './blocks/CropperRotate/CropperRotate.container';
 import CropperTab from "./blocks/CropperTab";
+import {Button} from "@material-ui/core";
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -51,7 +52,8 @@ const store = createStore<CropManagerState>({
     angle: 0,
     flipX: false,
     flipY: false,
-    aspectRatio: 1.6,
+    aspectRatio: 1,
+    minZoom: 1,
 });
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -96,6 +98,11 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 height={528}
                 className={classes.root}
             >
+                <Button
+                    style={{position: 'absolute', left: 90, top: 23, zIndex: 2}}
+                    variant='contained'
+                    onClick={() => this.manager!.save()}
+                >save</Button>
                 <CropperToolbar
                     store={store}
                     tab={tab}
