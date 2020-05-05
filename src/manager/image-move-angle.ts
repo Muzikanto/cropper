@@ -7,7 +7,7 @@ function imageMoveToAngle(crop: Crop, prevImageCrop: Crop, nextImageCrop: Crop, 
     const imageWidth = prevImageCrop.width * zoom;
     const imageHeight = prevImageCrop.height * zoom;
 
-    const nextImage = nextImageCrop;
+    const nextImage = {...nextImageCrop};
 
     const topDiff = crop.y - prevImageCrop.y;
     const leftDiff = crop.x - prevImageCrop.x;

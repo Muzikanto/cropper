@@ -37,11 +37,6 @@ export type DraggedData = {
     data: { x: number, y: number; };
 }
 
-// TODO
-/*
-    - scale decrement error
- */
-
 class CropManager {
     public canvas: HTMLCanvasElement;
     public ctx: CanvasRenderingContext2D;
@@ -194,7 +189,8 @@ class CropManager {
             // инкремент
             const nextImageCrop = this.zoomTo(img, imageCrop, crop, state.zoom, zoom);
 
-            Object.assign(nextImage, nextImageCrop);
+            nextImage.x = nextImageCrop.x;
+            nextImage.y = nextImageCrop.y;
         } else {
             // декремент
 
@@ -215,12 +211,10 @@ class CropManager {
 
             const nextImageCrop = this.zoomTo(img, imageCrop, crop, state.zoom, zoom);
 
-            Object.assign(
-                nextImage,
-                nextImageCrop,
-            );
+            nextImage.x = nextImageCrop.x;
+            nextImage.y = nextImageCrop.y;
 
-            this.imageMoveToAngle(
+            const nextImageCropToAngle = this.imageMoveToAngle(
                 crop,
                 imageCrop,
                 nextImage,
@@ -228,6 +222,8 @@ class CropManager {
                 nextImageWidth,
                 nextImageHeight,
             );
+            nextImage.x = nextImageCropToAngle.x;
+            nextImage.y = nextImageCropToAngle.y;
 
             if (nextImageWidth < crop.width) {
                 return;
@@ -254,23 +250,26 @@ class CropManager {
         if (dragged) {
             if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
                 const nextCrop = this.moveCrop(dragged.type, cursor, crop, this.area, state.aspectRatio, this.minSize);
-                const {
-                    zoom: nextZoom,
-                    cropImage: nextCropImage,
-                } = this.scaleZoomImage(crop, nextCrop, imageCrop, state.zoom, state.minZoom);
+
+                // if (false) {
+                //     const {
+                //         zoom: nextZoom,
+                //         cropImage: nextCropImage,
+                //     } = this.scaleZoomImage(crop, nextCrop, imageCrop, state.zoom, state.minZoom);
+                // }
 
                 this.changeState({
                     crop: nextCrop,
-                    imageCrop: nextCropImage,
-                    zoom: nextZoom,
+                    // imageCrop: nextCropImage,
+                    // zoom: nextZoom,
                 });
             } else {
                 if (dragged.type === 'image') {
-                    const nextImage = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom);
+                    const nextImageCrop = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom);
 
                     this.dragged!.data = cursor;
                     this.changeState({
-                        imageCrop: nextImage,
+                        imageCrop: nextImageCrop,
                     });
                 }
             }
