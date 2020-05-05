@@ -214,16 +214,18 @@ class CropManager {
             nextImage.x = nextImageCrop.x;
             nextImage.y = nextImageCrop.y;
 
-            const nextImageCropToAngle = this.imageMoveToAngle(
-                crop,
-                imageCrop,
-                nextImage,
-                state.zoom,
-                nextImageWidth,
-                nextImageHeight,
-            );
-            nextImage.x = nextImageCropToAngle.x;
-            nextImage.y = nextImageCropToAngle.y;
+            if (false) {
+                const nextImageCropToAngle = this.imageMoveToAngle(
+                    crop,
+                    imageCrop,
+                    nextImage,
+                    state.zoom,
+                    nextImageWidth,
+                    nextImageHeight,
+                );
+                nextImage.x = nextImageCropToAngle.x;
+                nextImage.y = nextImageCropToAngle.y;
+            }
 
             if (nextImageWidth < crop.width) {
                 return;
