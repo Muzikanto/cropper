@@ -38,6 +38,7 @@ export interface CropperToolbarProps {
     tab: number;
     onChangeTab?: (tab: number) => void;
 
+    onDone: () => void;
     onRefresh?: () => void;
 }
 
@@ -80,6 +81,7 @@ function CropperToolbar(props: CropperToolbarProps) {
             <Button
                 className={classes.done}
                 variant='contained'
+                onClick={props.onDone}
             >Done</Button>
         </Toolbar>
     )

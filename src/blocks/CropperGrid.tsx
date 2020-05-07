@@ -11,12 +11,12 @@ const useStyles = makeStyles(() => ({
         height: 296,
         margin: '4px 24px 24px 24px',
         position: 'relative',
+        cursor: 'move',
     },
     grid: {
         boxSizing: 'border-box',
         position: 'absolute',
         border: 'solid 1px white',
-        cursor: 'move',
     },
     circle: {
         zIndex: 1,
@@ -81,9 +81,6 @@ function CropperGrid(props: CropperGridProps) {
     const crop = props.crop;
 
     const onMouseDown = (type: DragItemType) => (e: any) => {
-        e.preventDefault();
-        e.stopPropagation();
-
         props.onMouseDown(type, {x: e.clientX, y: e.clientY});
     };
 
@@ -102,7 +99,7 @@ function CropperGrid(props: CropperGridProps) {
                     height: crop.height,
                 }}
                 ref={props.gridRef}
-                onMouseDown={onMouseDown('image')}
+                // onMouseDown={onMouseDown('image')}
             >
                 <Box
                     className={clsx(classes.circle, classes.lt)}

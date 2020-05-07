@@ -5,6 +5,7 @@ import cropperZoomTo from "./manager/image-zoom";
 import imageMove from "./manager/image-move";
 import cropperImageScale from "./manager/image-scale";
 import imageMoveToAngle from "./manager/image-move-angle";
+import cropImage from "./manager/crop-image";
 
 export interface Pos2d {
     x: number;
@@ -66,8 +67,7 @@ class CropManager {
 
         if (!state.initialChanged) {
             this.store.set({...state, ...nextState, initialChanged: true, lastChanged: new Date()});
-        }
-        else {
+        } else {
             this.store.set({...state, ...nextState, changed: true, lastChanged: new Date()});
         }
 
@@ -75,13 +75,15 @@ class CropManager {
     }
 
     public loadImage = (src: string) => {
-        const image = new Image();
+        const img = new Image();
 
-        image.src = src;
-        image.onload = () => {
+        img.setAttribute('crossOrigin', 'Anonymous');
+
+        img.src = src;
+        img.onload = () => {
             const defaultConfig = {
                 ...this.store.get(),
-                ...this.getDefaultConfig(image, this.area, this.store.get().aspectRatio),
+                ...this.getDefaultConfig(img, this.area, this.store.get().aspectRatio),
             };
 
             if (0) {
@@ -96,7 +98,7 @@ class CropManager {
             this.defaultState = defaultConfig;
         };
 
-        this.image = image;
+        this.image = img;
     }
 
     public drawImage() {
@@ -159,7 +161,7 @@ class CropManager {
         );
         ctx.fillRect(
             cropRight,
-             0,
+            0,
             this.canvas.width,
             this.canvas.height,
         );
@@ -167,7 +169,7 @@ class CropManager {
             cropLeft,
             0,
             Math.ceil(crop.width),
-            cropTop ,
+            cropTop,
         );
         ctx.fillRect(
             cropLeft,
@@ -187,6 +189,10 @@ class CropManager {
         const prevZoom = state.zoom;
         let zoom = prevZoom - (deltaY / 5000);
 
+        if (zoom < 0.1) {
+            return;
+        }
+
         const nextImage = {...state.imageCrop};
 
         if (deltaY < 0) {
@@ -202,16 +208,16 @@ class CropManager {
             let nextImageHeight = imageCrop.height * zoom;
 
             // если картинка меньше зума, ставим максимально возможный
-            if (nextImageWidth < crop.width) {
-                zoom = crop.width / imageCrop.width;
-                nextImageWidth = imageCrop.width * zoom;
-                nextImageHeight = imageCrop.height * zoom;
-            }
-            if (nextImageHeight < crop.height) {
-                zoom = crop.height / imageCrop.height;
-                nextImageWidth = imageCrop.width * zoom;
-                nextImageHeight = imageCrop.height * zoom;
-            }
+            // if (nextImageWidth < crop.width) {
+            //     zoom = crop.width / imageCrop.width;
+            //     nextImageWidth = imageCrop.width * zoom;
+            //     nextImageHeight = imageCrop.height * zoom;
+            // }
+            // if (nextImageHeight < crop.height) {
+            //     zoom = crop.height / imageCrop.height;
+            //     nextImageWidth = imageCrop.width * zoom;
+            //     nextImageHeight = imageCrop.height * zoom;
+            // }
 
             const nextImageCrop = this.zoomTo(img, imageCrop, crop, state.zoom, zoom);
 
@@ -231,12 +237,12 @@ class CropManager {
                 nextImage.y = nextImageCropToAngle.y;
             }
 
-            if (nextImageWidth < crop.width) {
-                return;
-            }
-            if (nextImageHeight < crop.height) {
-                return;
-            }
+            // if (nextImageWidth < crop.width) {
+            //     return;
+            // }
+            // if (nextImageHeight < crop.height) {
+            //     return;
+            // }
         }
 
         this.changeState({
@@ -271,7 +277,7 @@ class CropManager {
                 });
             } else {
                 if (dragged.type === 'image') {
-                    const nextImageCrop = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom, state.angle);
+                    const nextImageCrop = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom);
 
                     this.dragged!.data = cursor;
                     this.changeState({
@@ -287,7 +293,7 @@ class CropManager {
     protected scaleZoomImage = cropperImageScale;
     protected imageMoveToAngle = imageMoveToAngle;
     protected moveCrop = cropMove;
-    protected moveImage =  imageMove;
+    protected moveImage = imageMove;
     protected getDefaultConfig = getDefaultCropperConfig;
     protected zoomTo = cropperZoomTo;
 
@@ -337,6 +343,12 @@ class CropManager {
 
     public save = () => {
         localStorage.setItem('test', JSON.stringify(this.store.get()));
+    }
+
+    public toBase64 = () => {
+        const {crop} = this.store.get();
+
+        return cropImage(this.ctx!, crop);
     }
 }
 

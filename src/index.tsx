@@ -31,30 +31,19 @@ const styles = () => ({
         position: 'absolute',
         top: 0,
         left: 0,
+        cursor: 'move',
     },
 } as const);
 
 export interface CropperProps extends WithStyles<typeof styles> {
     src: string;
+
+    onChange: (base64: string) => void;
 }
 
 export interface CropperState {
     tab: number;
 }
-
-const store = createStore<CropManagerState>({
-    imageCrop: {x: 0, y: 0, width: 0, height: 0},
-    crop: {x: 0, y: 0, width: 0, height: 0},
-    zoom: 1,
-    initialChanged: false,
-    changed: false,
-    lastChanged: null,
-    angle: 0,
-    flipX: false,
-    flipY: false,
-    aspectRatio: 1,
-    minZoom: 1,
-});
 
 class Cropper extends React.Component<CropperProps, CropperState> {
     public gridRef: HTMLDivElement | null = null;
@@ -63,16 +52,33 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public state = {tab: 0};
 
+    protected store = createStore<CropManagerState>({
+        imageCrop: {x: 0, y: 0, width: 0, height: 0},
+        crop: {x: 0, y: 0, width: 0, height: 0},
+        zoom: 1,
+        initialChanged: false,
+        changed: false,
+        lastChanged: null,
+        angle: 0,
+        flipX: false,
+        flipY: false,
+        aspectRatio: 1,
+        minZoom: 1,
+    });
+
     protected manager: CropManager | null = null;
 
     public componentDidMount(): void {
         if (this.areaRef && this.canvasRef && this.gridRef) {
-            this.manager = new CropManager(store, this.canvasRef, this.areaRef);
+            this.manager = new CropManager(this.store, this.canvasRef, this.areaRef);
 
             document.addEventListener('mousemove', this.onMouseMove);
             document.addEventListener('mouseup', this.clearDragged);
             document.addEventListener('mouseleave', this.clearDragged);
+
             this.gridRef.addEventListener('wheel', this.onMouseWheel);
+            this.canvasRef.addEventListener('mousedown', this.onMouseDown);
+            this.areaRef.addEventListener('mousedown', this.onMouseDown);
 
             this.manager.loadImage(this.props.src);
         }
@@ -86,11 +92,20 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         if (this.gridRef) {
             this.gridRef.removeEventListener('wheel', this.onMouseWheel);
         }
+
+        if (this.canvasRef) {
+            this.canvasRef.removeEventListener('mousedown', this.onMouseDown);
+        }
+
+        if (this.areaRef) {
+            this.areaRef.removeEventListener('mousedown', this.onMouseDown);
+        }
     }
 
     public render() {
         const {classes} = this.props;
         const {tab} = this.state;
+        const store = this.store;
 
         return (
             <Box
@@ -107,6 +122,11 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                     store={store}
                     tab={tab}
                     onChangeTab={(v) => this.setState((prevState) => ({...prevState, tab: v}))}
+                    onDone={() => {
+                        const base64 = this.manager!.toBase64();
+
+                        this.props.onChange(base64);
+                    }}
                     onRefresh={() => this.manager!.refreshState()}
                 />
 
@@ -155,6 +175,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 </CropperTab>
 
                 <canvas
+                    onClick={e => console.log(e)}
                     ref={canvasRef => this.canvasRef = canvasRef}
                     className={classes.canvas}
                     width={928}
@@ -181,6 +202,9 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         this.manager!.zoom(e.deltaY);
     }
 
+    protected onMouseDown = (e: any) => {
+        this.manager!.setDragged('image', {x: e.clientX, y: e.clientY});
+    }
 }
 
 export default withStyles(styles)(Cropper);
