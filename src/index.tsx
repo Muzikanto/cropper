@@ -138,7 +138,20 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         }
                     </StoreConsumer>
 
-                    <CropperRotate/>
+                    <StoreConsumer store={store} selector={s => s.angle}>
+                        {
+                            (angle: number) => {
+                                return (
+                                    <CropperRotate
+                                        value={angle}
+                                        onChange={v => {
+                                            this.manager!.rotate(v);
+                                        }}
+                                    />
+                                );
+                            }
+                        }
+                    </StoreConsumer>
                 </CropperTab>
 
                 <canvas

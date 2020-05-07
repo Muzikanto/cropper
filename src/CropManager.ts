@@ -103,12 +103,15 @@ class CropManager {
         const state = this.store.get();
         const image = this.image!;
         const crop = state.crop;
+        const imageCrop = state.imageCrop;
         const ctx = this.ctx;
 
         const horizontalMargin = 24;
         const topMargin = 152;
 
         const zoom = state.zoom;
+        const angle = state.angle;
+        const rad = angle * Math.PI / 180;
         const flipX = state.flipX ? -1 : 1;
         const flipY = state.flipY ? -1 : 1;
 
@@ -122,55 +125,56 @@ class CropManager {
         const cropTop = crop.y + topMargin;
         const cropBottom = cropTop + crop.height;
 
-        const translateX = (cropLeft + crop.width);
-        const translateY = (cropTop + crop.height);
+        const translateImageX = (imageCrop.x + horizontalMargin + (imageCrop.width * zoom) / 2);
+        const translateImageY = (imageCrop.y + topMargin + (imageCrop.height * zoom) / 2);
 
         // clear canvas
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         ctx.save();
 
         // set center of canvas
-        ctx.translate(translateX, translateY);
+        ctx.translate(translateImageX, translateImageY);
 
+        ctx.rotate(rad);
         ctx.scale(flipX, flipY);
 
         // draw image
         ctx.drawImage(image,
-            (x - translateX) * flipX,
-            (y - translateY) * flipY,
+            (x - translateImageX) * flipX,
+            (y - translateImageY) * flipY,
             w * flipX,
             h * flipY,
         );
+
+        ctx.restore();
 
         // darken background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
 
         ctx.fillRect(
-            (0 - translateX) * flipX,
-            (0 - translateY) * flipY,
-            cropLeft * flipX,
-            this.canvas.height * flipY,
+            0,
+            0,
+            cropLeft,
+            this.canvas.height,
         );
         ctx.fillRect(
-            (cropRight - translateX) * flipX,
-            (0 - translateY) * flipY,
-            this.canvas.width * flipX,
-            this.canvas.height * flipY,
+            cropRight,
+             0,
+            this.canvas.width,
+            this.canvas.height,
         );
         ctx.fillRect(
-            (cropLeft - translateX) * flipX,
-            (0 - translateY) * flipY,
-            Math.ceil(crop.width) * flipX,
-            cropTop * flipY,
+            cropLeft,
+            0,
+            Math.ceil(crop.width),
+            cropTop ,
         );
         ctx.fillRect(
-            (cropLeft - translateX) * flipX,
-            (cropBottom - translateY) * flipY,
-            Math.ceil(crop.width) * flipX,
-            this.canvas.height * flipY,
+            cropLeft,
+            cropBottom,
+            Math.ceil(crop.width),
+            this.canvas.height,
         );
-
-        ctx.restore();
     }
 
     public zoom = (deltaY: number) => {
@@ -267,7 +271,7 @@ class CropManager {
                 });
             } else {
                 if (dragged.type === 'image') {
-                    const nextImageCrop = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom);
+                    const nextImageCrop = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom, state.angle);
 
                     this.dragged!.data = cursor;
                     this.changeState({
@@ -300,12 +304,12 @@ class CropManager {
     }
 
     public rotate = (angle: number) => {
-        this.changeState({angle});
+        this.changeState({angle: angle % 360});
     }
     public rotateLeft = () => {
         const state = this.store.get();
 
-        const nextAngle = (state.angle + 90) % 360;
+        const nextAngle = (state.angle + 90);
 
         this.rotate(nextAngle);
     }
@@ -313,7 +317,7 @@ class CropManager {
     public rotateRight = () => {
         const state = this.store.get();
 
-        const nextAngle = (state.angle - 90) % 360;
+        const nextAngle = (state.angle - 90);
 
         this.rotate(nextAngle);
     }

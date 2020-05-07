@@ -2,17 +2,11 @@ import React from 'react';
 import UI from './CropperRotate';
 
 export interface CropperRotateProps {
-
+    value: number;
+    onChange: (v: number) => void;
 }
 
-export interface CropperRotateState {
-    angle: number;
-}
-
-class CropperRotate extends React.Component<CropperRotateProps, CropperRotateState> {
-    public state = {
-        angle: 0,
-    };
+class CropperRotate extends React.Component<CropperRotateProps> {
     public cursor: number | null = null;
 
     public componentDidMount() {
@@ -30,7 +24,7 @@ class CropperRotate extends React.Component<CropperRotateProps, CropperRotateSta
     public render() {
         return (
             <UI
-                angle={this.state.angle}
+                angle={this.props.value}
                 onMouseMove={this.onMouseMove}
                 onMouseDown={this.onMouseDown}
                 onMouseUp={this.clearDragged}
@@ -40,13 +34,13 @@ class CropperRotate extends React.Component<CropperRotateProps, CropperRotateSta
 
     public onMouseMove = (e: React.MouseEvent) => {
         if (this.cursor !== null) {
-            const angle = this.state.angle;
+            const angle = this.props.value;
             const diff = (this.cursor - e.clientX) / 10;
             const nextAngle = angle + diff;
 
-            if (nextAngle <= 45 && nextAngle >= -45) {
-                this.setState({angle: nextAngle});
-            }
+            // if (nextAngle <= 45 && nextAngle >= -45) {
+                this.props.onChange(nextAngle);
+            // }
 
             this.cursor = e.clientX;
         }
