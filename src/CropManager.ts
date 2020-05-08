@@ -1,5 +1,4 @@
 import {Store} from "@muzikanto/observable";
-import getDefaultCropperConfig from "./manager/get-config";
 import cropMove from "./manager/crop-move";
 import cropperZoomTo from "./manager/image-zoom";
 import imageMove from "./manager/image-move";
@@ -21,7 +20,6 @@ export interface CropManagerState {
     crop: Crop;
     imageCrop: Crop;
     zoom: number;
-    minZoom: number;
     initialChanged: boolean;
     changed: boolean;
     lastChanged: Date | null;
@@ -29,13 +27,14 @@ export interface CropManagerState {
     flipX: boolean;
     flipY: boolean;
     aspectRatio: number | null;
+    minSize: { width: number; height: number; };
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
 
 export type DraggedData = {
     type: DragItemType;
-    data: { x: number, y: number; };
+    start: { x: number, y: number; };
 }
 
 class CropManager {
@@ -47,10 +46,6 @@ class CropManager {
     public dragged: DraggedData | null = null;
     public store: Store<CropManagerState>;
     public defaultState: CropManagerState;
-    public minSize = {
-        height: 50,
-        width: 50,
-    };
 
     constructor(store: Store<CropManagerState>, canvas: HTMLCanvasElement, area: HTMLDivElement) {
         this.canvas = canvas;
@@ -58,8 +53,7 @@ class CropManager {
         this.store = store;
         this.defaultState = store.get();
 
-        const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-        this.ctx = ctx;
+        this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
     }
 
     protected changeState = (nextState: Partial<CropManagerState>) => {
@@ -72,7 +66,11 @@ class CropManager {
         }
 
         this.drawImage();
-    }
+    };
+    public refreshState = () => {
+        this.store.set(this.defaultState);
+        this.drawImage();
+    };
 
     public loadImage = (src: string) => {
         const img = new Image();
@@ -83,25 +81,57 @@ class CropManager {
         img.onload = () => {
             const defaultConfig = {
                 ...this.store.get(),
-                ...this.getDefaultConfig(img, this.area, this.store.get().aspectRatio),
+                ...this.getDefaultConfig(this.store.get().aspectRatio),
             };
 
-            if (0) {
-                const savedConfig = localStorage.getItem('test');
-                const nextState = JSON.parse(savedConfig as string);
-
-                this.changeState(nextState);
-            } else {
-                this.changeState(defaultConfig);
-            }
+            this.changeState(defaultConfig);
 
             this.defaultState = defaultConfig;
         };
 
         this.image = img;
-    }
+    };
 
-    public drawImage() {
+    protected getDefaultConfig = (aspectRatio: number | null) => {
+        const rect = this.area.getBoundingClientRect();
+        const img = this.image!;
+
+        let zoom = aspectRatio ?
+            aspectRatio > 1 ?
+                (rect.height * aspectRatio) / img.width
+                : rect.height / img.height
+            : rect.height / img.height;
+        let cropWidth = aspectRatio ? rect.height * aspectRatio : img.width * zoom;
+        let cropHeight = aspectRatio ? rect.height : img.height * zoom;
+
+        const cropX = (rect.width / 2) - cropWidth / 2;
+        const cropY = 0;
+
+        const imageWidth = img.width;
+        const imageHeight = img.height;
+        const imageX = cropX - (imageWidth * zoom - cropWidth) / 2;
+        const imageY = cropY - (imageHeight * zoom - cropHeight) / 2;
+
+        return {
+            crop: {
+                x: cropX,
+                y: cropY,
+                width: cropWidth,
+                height: cropHeight,
+            },
+            imageCrop: {
+                x: imageX,
+                y: imageY,
+                width: imageWidth,
+                height: imageHeight,
+            },
+            zoom,
+            minZoom: zoom,
+            aspectRatio,
+        };
+    };
+
+    protected drawImage() {
         const state = this.store.get();
         const image = this.image!;
         const crop = state.crop;
@@ -179,6 +209,82 @@ class CropManager {
         );
     }
 
+    public move = (cursor: { x: number, y: number }) => {
+        if (this.dragged) {
+            if (['lt', 'rt', 'lb', 'rb'].indexOf(this.dragged.type) > -1) {
+                this.dragCropperMove(cursor)
+            } else {
+                this.dragImageMove(cursor);
+            }
+        }
+
+        return null;
+    };
+
+    public dragCropperStart = (type: Exclude<DragItemType, 'image'>, start: { x: number, y: number }) => {
+        this.dragged = {type, start};
+    };
+    public dragCropperMove = (target: { x: number, y: number }) => {
+        if (this.dragged) {
+            const state = this.store.get();
+
+            const {x, y, width, height} = this.moveCropToPos(
+                this.dragged.type,
+                target,
+                state.crop,
+                this.area,
+                state.aspectRatio,
+                state.minSize,
+            );
+
+            //     const {
+            //         zoom: nextZoom,
+            //         cropImage: nextCropImage,
+            //     } = this.scaleZoomImage(crop, nextCrop, imageCrop, state.zoom, state.minZoom);
+
+            this.moveCrop(x, y, {width, height});
+        }
+    };
+    public moveCrop = (x: number, y: number, size?: { width: number, height: number; }) => {
+        this.changeState({
+            crop: {...this.store.get().crop, x, y, ...size},
+        });
+    };
+    protected moveCropToPos = cropMove;
+
+    public dragImageStart = (start: { x: number; y: number; }) => {
+        this.dragged = {type: 'image', start};
+    };
+    public dragImageMove = (target: { x: number; y: number; }) => {
+        const state = this.store.get();
+
+        if (this.dragged) {
+            const {x, y} = this.moveImageToPos(
+                target, this.dragged.start,
+                state.crop, state.imageCrop, state.zoom,
+            );
+
+            this.dragged!.start = target;
+
+            this.moveImage(x, y);
+        }
+    };
+    public moveImage = (x: number, y: number) => {
+        this.changeState({
+            imageCrop: {...this.store.get().imageCrop, x, y},
+        });
+    };
+    protected moveImageToPos = imageMove;
+    protected scaleZoomImage = cropperImageScale;
+    protected imageMoveToAngle = imageMoveToAngle;
+
+    public setDragged = (type: DragItemType, start: { x: number, y: number; }) => {
+        this.dragged = {type, start};
+    };
+    public clearDragged = () => {
+        this.dragged = null;
+    };
+
     public zoom = (deltaY: number) => {
         const state = this.store.get();
 
@@ -204,8 +310,8 @@ class CropManager {
         } else {
             // декремент
 
-            let nextImageWidth = imageCrop.width * zoom;
-            let nextImageHeight = imageCrop.height * zoom;
+            // let nextImageWidth = imageCrop.width * zoom;
+            // let nextImageHeight = imageCrop.height * zoom;
 
             // если картинка меньше зума, ставим максимально возможный
             // if (nextImageWidth < crop.width) {
@@ -224,18 +330,16 @@ class CropManager {
             nextImage.x = nextImageCrop.x;
             nextImage.y = nextImageCrop.y;
 
-            if (false) {
-                const nextImageCropToAngle = this.imageMoveToAngle(
-                    crop,
-                    imageCrop,
-                    nextImage,
-                    state.zoom,
-                    nextImageWidth,
-                    nextImageHeight,
-                );
-                nextImage.x = nextImageCropToAngle.x;
-                nextImage.y = nextImageCropToAngle.y;
-            }
+            // const nextImageCropToAngle = this.imageMoveToAngle(
+            //     crop,
+            //     imageCrop,
+            //     nextImage,
+            //     state.zoom,
+            //     nextImageWidth,
+            //     nextImageHeight,
+            // );
+            // nextImage.x = nextImageCropToAngle.x;
+            // nextImage.y = nextImageCropToAngle.y;
 
             // if (nextImageWidth < crop.width) {
             //     return;
@@ -248,102 +352,44 @@ class CropManager {
         this.changeState({
             imageCrop: nextImage,
             zoom,
-            minZoom: zoom,
         });
-    }
-
-    public move = (cursor: { x: number, y: number }) => {
-        const state = this.store.get();
-
-        const dragged = this.dragged;
-        const imageCrop = state.imageCrop;
-        const crop = state.crop;
-
-        if (dragged) {
-            if (['lt', 'rt', 'lb', 'rb'].indexOf(dragged.type) > -1) {
-                const nextCrop = this.moveCrop(dragged.type, cursor, crop, this.area, state.aspectRatio, this.minSize);
-
-                // if (false) {
-                //     const {
-                //         zoom: nextZoom,
-                //         cropImage: nextCropImage,
-                //     } = this.scaleZoomImage(crop, nextCrop, imageCrop, state.zoom, state.minZoom);
-                // }
-
-                this.changeState({
-                    crop: nextCrop,
-                    // imageCrop: nextCropImage,
-                    // zoom: nextZoom,
-                });
-            } else {
-                if (dragged.type === 'image') {
-                    const nextImageCrop = this.moveImage(cursor, dragged, crop, imageCrop, state.zoom);
-
-                    this.dragged!.data = cursor;
-                    this.changeState({
-                        imageCrop: nextImageCrop,
-                    });
-                }
-            }
-        }
-
-        return null;
-    }
-
-    protected scaleZoomImage = cropperImageScale;
-    protected imageMoveToAngle = imageMoveToAngle;
-    protected moveCrop = cropMove;
-    protected moveImage = imageMove;
-    protected getDefaultConfig = getDefaultCropperConfig;
+    };
     protected zoomTo = cropperZoomTo;
-
-    public setDragged = (type: DragItemType, data: { x: number, y: number; }) => {
-        this.dragged = {type, data};
-    }
-    public clearDragged = () => {
-        this.dragged = null;
-    }
-
-    public refreshState = () => {
-        this.store.set(this.defaultState);
-        this.drawImage();
-    }
 
     public rotate = (angle: number) => {
         this.changeState({angle: angle % 360});
-    }
+    };
     public rotateLeft = () => {
         const state = this.store.get();
 
         const nextAngle = (state.angle + 90);
 
         this.rotate(nextAngle);
-    }
-
+    };
     public rotateRight = () => {
         const state = this.store.get();
 
         const nextAngle = (state.angle - 90);
 
         this.rotate(nextAngle);
-    }
+    };
 
-    public flipX = () => {
-        this.changeState({flipX: !this.store.get().flipX});
-    }
-    public flipY = () => {
-        this.changeState({flipY: !this.store.get().flipY});
-    }
+    public flipX = (flip?: boolean) => {
+        const flipped = typeof flip === 'undefined' ? !this.store.get().flipX : flip;
 
-    public changeAspectRatio = (aspectRatio: number | null) => {
-        const newConfig = this.getDefaultConfig(this.image!, this.area, aspectRatio);
+        this.changeState({flipX: flipped});
+    };
+    public flipY = (flip?: boolean) => {
+        const flipped = typeof flip === 'undefined' ? !this.store.get().flipY : flip;
+
+        this.changeState({flipY: flipped});
+    };
+
+    public aspectRatio = (aspectRatio: number | null) => {
+        const newConfig = this.getDefaultConfig(aspectRatio);
 
         this.changeState(newConfig);
-    }
-
-    public save = () => {
-        localStorage.setItem('test', JSON.stringify(this.store.get()));
-    }
+    };
 
     public toBase64 = () => {
         const {crop} = this.store.get();

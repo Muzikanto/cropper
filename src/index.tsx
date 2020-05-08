@@ -10,7 +10,6 @@ import CropperToolbar from "./blocks/CropperToolbar";
 import CropperGrid from "./blocks/CropperGrid";
 import CropperRotate from './blocks/CropperRotate/CropperRotate.container';
 import CropperTab from "./blocks/CropperTab";
-import {Button} from "@material-ui/core";
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -35,14 +34,28 @@ const styles = () => ({
     },
 } as const);
 
+export interface CropperState {
+    tab: number;
+}
+
 export interface CropperProps extends WithStyles<typeof styles> {
     src: string;
 
     onChange: (base64: string) => void;
-}
 
-export interface CropperState {
-    tab: number;
+    minZoom?: number;
+    maxZoom?: number;
+    minWidth?: number;
+    minHeight?: number;
+
+    aspectRatio?: number | Array<null | number>;
+    flippedX?: boolean;
+    flippedY?: boolean;
+    flipped?: boolean;
+    rotatedLeft?: boolean;
+    rotatedRight?: boolean;
+    rotate?: boolean;
+    rotateToAngle?: boolean;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -63,7 +76,10 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         flipX: false,
         flipY: false,
         aspectRatio: 1,
-        minZoom: 1,
+        minSize: {
+            width: 50,
+            height: 50,
+        },
     });
 
     protected manager: CropManager | null = null;
@@ -113,11 +129,6 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 height={528}
                 className={classes.root}
             >
-                <Button
-                    style={{position: 'absolute', left: 90, top: 23, zIndex: 2}}
-                    variant='contained'
-                    onClick={() => this.manager!.save()}
-                >save</Button>
                 <CropperToolbar
                     store={store}
                     tab={tab}
@@ -135,7 +146,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         className={classes.subBar}
                         store={store}
 
-                        onAspectRatio={v => this.manager!.changeAspectRatio(v)}
+                        onAspectRatio={v => this.manager!.aspectRatio(v)}
                         onFlipX={() => this.manager!.flipX()}
                         onFlipY={() => this.manager!.flipY()}
                         onRotateLeft={() => this.manager!.rotateLeft()}
