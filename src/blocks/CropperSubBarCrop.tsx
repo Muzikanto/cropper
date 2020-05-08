@@ -4,7 +4,7 @@ import Button from "@material-ui/core/Button";
 import FlipIcon from '@material-ui/icons/Flip';
 import RotateLeftIcon from '@material-ui/icons/RotateLeft';
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
-import CropperAspectRatio from "./CropperAspectRatio";
+import CropperAspectRatio, {CropperAspectRationKeys, CropperCustomAspectRation} from "./CropperAspectRatio";
 import makeStyles from "@material-ui/styles/makeStyles/makeStyles";
 import {CropManagerState} from "../CropManager";
 import {Store} from "@muzikanto/observable";
@@ -31,66 +31,96 @@ export interface CropperSubBarCropProps {
     onRotateRight: () => void;
     onFlipX: () => void;
     onFlipY: () => void;
-    onAspectRatio: (value: number | null) => void;
+    onAspectRatio: (value: number | false) => void;
+
+    aspectRatio?: number | Array<CropperAspectRationKeys | CropperCustomAspectRation>;
+    flippedX?: boolean;
+    flippedY?: boolean;
+    flipped?: boolean;
+    rotatedLeft?: boolean;
+    rotatedRight?: boolean;
+    rotate?: boolean;
 }
 
 function CropperSubBarCrop(props: CropperSubBarCropProps) {
     const classes = useStyles();
     const store = props.store;
 
+    const rotatedLeft = props.rotatedLeft || props.rotate;
+    const rotatedRight = props.rotatedRight || props.rotate;
+    const flipX = props.flippedX || props.flipped;
+    const flipY = props.flippedY || props.flipped;
+    const aspectRatio = Array.isArray(props.aspectRatio) && props.aspectRatio.length > 1;
+
     return (
         <Toolbar className={clsx(classes.root, props.className)}>
-            <Button
-                className={classes.btn}
-                startIcon={<RotateLeftIcon/>}
-                variant='outlined'
-                color='inherit'
-                onClick={props.onRotateLeft}
-            >Rotate left</Button>
-            <Button
-                className={classes.btn}
-                startIcon={<RotateLeftIcon style={{transform: 'scale(-1, 1)'}}/>}
-                variant='outlined'
-                color='inherit'
-                onClick={props.onRotateRight}
-            >Rotate right</Button>
-            <StoreConsumer store={store} selector={s => s.flipX}>
-                {
-                    (flipX: boolean) => (
-                        <Button
-                            className={classes.btn}
-                            startIcon={<FlipIcon style={{transform: `rotate(${flipX ? 180 : 0}deg)`}}/>}
-                            variant='outlined'
-                            color='inherit'
-                            onClick={props.onFlipX}
-                        >Flip horizontal</Button>
-                    )
-                }
-            </StoreConsumer>
-            <StoreConsumer store={store} selector={s => s.flipY}>
-                {
-                    (flipY: boolean) => (
-                        <Button
-                            className={classes.btn}
-                            startIcon={<FlipIcon style={{transform: `rotate(${flipY ? 270 : 90}deg)`}}/>}
-                            variant='outlined'
-                            color='inherit'
-                            onClick={props.onFlipY}
-                        >Flip vertical</Button>
-                    )
-                }
-            </StoreConsumer>
-            <StoreConsumer store={store} selector={s => s.aspectRatio}>
-                {
-                    (aspectRatio: number | null) => (
-                        <CropperAspectRatio
-                            value={aspectRatio}
-                            onChange={props.onAspectRatio}
-                            className={classes.btn}
-                        />
-                    )
-                }
-            </StoreConsumer>
+            {
+                rotatedLeft &&
+                <Button
+                    className={classes.btn}
+                    startIcon={<RotateLeftIcon/>}
+                    variant='outlined'
+                    color='inherit'
+                    onClick={props.onRotateLeft}
+                >Rotate left</Button>
+            }
+            {
+                rotatedRight &&
+                <Button
+                    className={classes.btn}
+                    startIcon={<RotateLeftIcon style={{transform: 'scale(-1, 1)'}}/>}
+                    variant='outlined'
+                    color='inherit'
+                    onClick={props.onRotateRight}
+                >Rotate right</Button>
+            }
+            {
+                flipX &&
+                <StoreConsumer store={store} selector={s => s.flipX}>
+                    {
+                        (flipX: boolean) => (
+                            <Button
+                                className={classes.btn}
+                                startIcon={<FlipIcon style={{transform: `rotate(${flipX ? 180 : 0}deg)`}}/>}
+                                variant='outlined'
+                                color='inherit'
+                                onClick={props.onFlipX}
+                            >Flip horizontal</Button>
+                        )
+                    }
+                </StoreConsumer>
+            }
+            {
+                flipY &&
+                <StoreConsumer store={store} selector={s => s.flipY}>
+                    {
+                        (flipY: boolean) => (
+                            <Button
+                                className={classes.btn}
+                                startIcon={<FlipIcon style={{transform: `rotate(${flipY ? 270 : 90}deg)`}}/>}
+                                variant='outlined'
+                                color='inherit'
+                                onClick={props.onFlipY}
+                            >Flip vertical</Button>
+                        )
+                    }
+                </StoreConsumer>
+            }
+            {
+                aspectRatio &&
+                <StoreConsumer store={store} selector={s => s.aspectRatio}>
+                    {
+                        (aspectRatio: number | false) => (
+                            <CropperAspectRatio
+                                value={aspectRatio}
+                                onChange={props.onAspectRatio}
+                                className={classes.btn}
+                                aspectRatio={props.aspectRatio}
+                            />
+                        )
+                    }
+                </StoreConsumer>
+            }
         </Toolbar>
     );
 }

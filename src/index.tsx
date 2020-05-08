@@ -2,7 +2,7 @@ import React from 'react';
 import Box from '@material-ui/core/Box';
 import withStyles from '@material-ui/core/styles/withStyles';
 import {WithStyles} from '@material-ui/styles';
-import CropManager, {Crop, CropManagerState} from './CropManager';
+import CropManager, {CropManagerState} from './CropManager';
 import createStore from "@muzikanto/observable/createStore";
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
 import CropperSubBarCrop from "./blocks/CropperSubBarCrop";
@@ -10,6 +10,8 @@ import CropperToolbar from "./blocks/CropperToolbar";
 import CropperGrid from "./blocks/CropperGrid";
 import CropperRotate from './blocks/CropperRotate/CropperRotate.container';
 import CropperTab from "./blocks/CropperTab";
+import {Store} from "@muzikanto/observable";
+import {CropperAspectRationKeys, CropperCustomAspectRation, getDefaultAspectRatio} from "./blocks/CropperAspectRatio";
 
 // https://pqina.nl/doka/?ref=filepond#features
 
@@ -48,7 +50,7 @@ export interface CropperProps extends WithStyles<typeof styles> {
     minWidth?: number;
     minHeight?: number;
 
-    aspectRatio?: number | Array<null | number>;
+    aspectRatio?: number | Array<CropperAspectRationKeys | CropperCustomAspectRation>;
     flippedX?: boolean;
     flippedY?: boolean;
     flipped?: boolean;
@@ -65,22 +67,29 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public state = {tab: 0};
 
-    protected store = createStore<CropManagerState>({
-        imageCrop: {x: 0, y: 0, width: 0, height: 0},
-        crop: {x: 0, y: 0, width: 0, height: 0},
-        zoom: 1,
-        initialChanged: false,
-        changed: false,
-        lastChanged: null,
-        angle: 0,
-        flipX: false,
-        flipY: false,
-        aspectRatio: 1,
-        minSize: {
-            width: 50,
-            height: 50,
-        },
-    });
+    protected store: Store<CropManagerState>;
+
+    constructor(props: CropperProps) {
+        super(props);
+
+        this.store = createStore<CropManagerState>({
+            imageCrop: {x: 0, y: 0, width: 0, height: 0},
+            crop: {x: 0, y: 0, width: 0, height: 0},
+            zoom: 1,
+            initialZoom: 1,
+            initialChanged: false,
+            changed: false,
+            lastChanged: null,
+            angle: 0,
+            flipX: false,
+            flipY: false,
+            aspectRatio: getDefaultAspectRatio(props.aspectRatio),
+            minSize: {
+                width: 50 || this.props.minWidth,
+                height: 50 || this.props.minHeight,
+            },
+        });
+    }
 
     protected manager: CropManager | null = null;
 
@@ -123,6 +132,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         const {tab} = this.state;
         const store = this.store;
 
+        const rotateToAngle = this.props.rotateToAngle || this.props.rotate;
+
         return (
             <Box
                 width={928}
@@ -151,38 +162,41 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         onFlipY={() => this.manager!.flipY()}
                         onRotateLeft={() => this.manager!.rotateLeft()}
                         onRotateRight={() => this.manager!.rotateRight()}
+
+                        aspectRatio={this.props.aspectRatio}
+                        flippedX={this.props.flippedX}
+                        flippedY={this.props.flippedY}
+                        flipped={this.props.flipped}
+                        rotatedLeft={this.props.rotatedLeft}
+                        rotatedRight={this.props.rotatedRight}
+                        rotate={this.props.rotate}
                     />
 
-                    <StoreConsumer store={store} selector={s => s.crop}>
-                        {
-                            (crop: Crop) => {
-                                return (
-                                    <CropperGrid
-                                        crop={crop}
-                                        onMouseUp={this.clearDragged}
-                                        onMouseDown={(type, data) => this.manager!.setDragged(type, data)}
-                                        areaRef={areaRef => this.areaRef = areaRef}
-                                        gridRef={gridRef => this.gridRef = gridRef}
-                                    />
-                                );
-                            }
-                        }
-                    </StoreConsumer>
+                    <CropperGrid
+                        store={store}
+                        onMouseUp={this.clearDragged}
+                        onMouseDown={(type, data) => this.manager!.setDragged(type, data)}
+                        areaRef={areaRef => this.areaRef = areaRef}
+                        gridRef={gridRef => this.gridRef = gridRef}
+                    />
 
-                    <StoreConsumer store={store} selector={s => s.angle}>
-                        {
-                            (angle: number) => {
-                                return (
-                                    <CropperRotate
-                                        value={angle}
-                                        onChange={v => {
-                                            this.manager!.rotate(v);
-                                        }}
-                                    />
-                                );
+                    {
+                        rotateToAngle &&
+                        <StoreConsumer store={store} selector={s => s.angle}>
+                            {
+                                (angle: number) => {
+                                    return (
+                                        <CropperRotate
+                                            value={angle}
+                                            onChange={v => {
+                                                this.manager!.rotate(v);
+                                            }}
+                                        />
+                                    );
+                                }
                             }
-                        }
-                    </StoreConsumer>
+                        </StoreConsumer>
+                    }
                 </CropperTab>
 
                 <canvas

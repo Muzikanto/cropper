@@ -45,11 +45,68 @@ const transformOrigin = {
     horizontal: 'center',
 } as const;
 
+export type CropperAspectRationKeys = 'square' | 'landscape' | 'portrait' | 'free';
+
+const mapValues: { [k in CropperAspectRationKeys]: number | false } = {
+    square: 1,
+    landscape: 16 / 10,
+    portrait: 10 / 16,
+    free: false,
+};
+
+export const getDefaultAspectRatio = (value?: number | Array<CropperAspectRationKeys | CropperCustomAspectRation>) => {
+    if (!value) {
+        return false;
+    }
+    if (typeof value === 'number') {
+        return value;
+    }
+    const first = value[0];
+
+    if (typeof first === 'string') {
+        return mapValues[first];
+    } else {
+        return first.value;
+    }
+};
+
+const mapRenders: { [k in CropperAspectRationKeys]: CropperCustomAspectRation } = {
+    free: {
+        icon: <CropFreeIcon/>,
+        value: false,
+        label: 'Free',
+    },
+    landscape: {
+        icon: <CropLandscapeIcon/>,
+        value: 16 / 10,
+        label: 'Landscape',
+    },
+    portrait: {
+        icon: <CropPortraitIcon/>,
+        value: 10 / 16,
+        label: 'Portrait',
+    },
+    square: {
+        icon: <CropSquareIcon/>,
+        value: 1,
+        label: 'Square',
+    },
+};
+
+export interface CropperCustomAspectRation {
+    icon: JSX.Element;
+    label: string;
+    // null => free aspectRatio
+    value: number | false;
+}
+
 export interface CropperAspectRatio {
     className?: string;
 
-    value: number | null;
-    onChange?: (value: number | null) => void;
+    value: number | false;
+    onChange?: (value: number | false) => void;
+
+    aspectRatio?: number | Array<CropperAspectRationKeys | CropperCustomAspectRation>;
 }
 
 function CropperAspectRatio(props: CropperAspectRatio) {
@@ -59,13 +116,17 @@ function CropperAspectRatio(props: CropperAspectRatio) {
     const onOpen = (e: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(e.currentTarget);
     const onClose = () => setAnchorEl(null);
 
-    const onChange = React.useCallback((value: number | null) => {
+    const onChange = React.useCallback((value: number | false) => {
         if (props.onChange) {
             props.onChange(value);
         }
 
         onClose();
     }, [props.onChange]);
+
+    if (!Array.isArray(props.aspectRatio)) {
+        return null;
+    }
 
     return (
         <>
@@ -84,26 +145,26 @@ function CropperAspectRatio(props: CropperAspectRatio) {
                 transformOrigin={transformOrigin}
                 className={classes.popover}
             >
-                <Button
-                    className={clsx(classes.btn, {[classes.current]: props.value === null} )}
-                    startIcon={<CropFreeIcon/>}
-                    onClick={() => onChange(null)}
-                >Free</Button>
-                <Button
-                    className={clsx(classes.btn, {[classes.current]: props.value === 16 / 10} )}
-                    startIcon={<CropLandscapeIcon/>}
-                    onClick={() => onChange(16 / 10)}
-                >Landscape</Button>
-                <Button
-                    className={clsx(classes.btn, {[classes.current]: props.value === 10 / 16} )}
-                    startIcon={<CropPortraitIcon/>}
-                    onClick={() => onChange(10 / 16)}
-                >Portrait</Button>
-                <Button
-                    className={clsx(classes.btn, {[classes.current]: props.value === 1} )}
-                    startIcon={<CropSquareIcon/>}
-                    onClick={() => onChange(1)}
-                >Square</Button>
+                {
+                    props.aspectRatio
+                        .map((el) => {
+                            if (typeof el === "string") {
+                                return mapRenders[el];
+                            } else {
+                                return el;
+                            }
+                        })
+                        .map((el, i) => {
+                            return (
+                                <Button
+                                    key={el.label + i}
+                                    className={clsx(classes.btn, {[classes.current]: props.value === el.value})}
+                                    startIcon={el.icon}
+                                    onClick={() => onChange(el.value)}
+                                >{el.label}</Button>
+                            )
+                        })
+                }
             </Popover>
         </>
     )

@@ -5,11 +5,11 @@ function cropMove(
     cursor: Pos2d,
     crop: Crop,
     area: HTMLDivElement,
-    aspectRatio: number | null,
+    aspectRatio: number | false,
     minSize: { width: number, height: number },
 ): Crop {
     const minHeight = minSize.height;
-    const minWidth = aspectRatio === null ? minSize.width : minHeight * aspectRatio;
+    const minWidth = typeof aspectRatio !== "number" ? minSize.width : minHeight * aspectRatio;
 
     const rect = area.getBoundingClientRect();
 
@@ -22,7 +22,7 @@ function cropMove(
     let height = crop.height;
 
     if (type === 'lt') {
-        if (aspectRatio === null) {
+        if (typeof aspectRatio !== 'number') {
             x = rawX < 0 ? 0 : rawX;
             y = rawY < 0 ? 0 : rawY;
 
@@ -46,7 +46,7 @@ function cropMove(
             height = crop.height;
         }
     } else if (type === 'rt') {
-        if (aspectRatio === null) {
+        if (typeof aspectRatio !== 'number') {
             y = rawY < 0 ? 0 : rawY;
 
             width = rawX - crop.x;
@@ -69,7 +69,7 @@ function cropMove(
             height = crop.height;
         }
     } else if (type === 'lb') {
-        if (aspectRatio === null) {
+        if (typeof aspectRatio !== 'number') {
             x = rawX < 0 ? 0 : rawX;
 
             width = crop.width - (x - crop.x);
@@ -101,7 +101,7 @@ function cropMove(
             height = crop.height;
         }
     } else if (type === 'rb') {
-        if (aspectRatio === null) {
+        if (typeof aspectRatio !== 'number') {
             width = rawX - crop.x;
             height = rawY - crop.y;
         } else {

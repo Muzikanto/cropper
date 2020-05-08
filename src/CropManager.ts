@@ -26,8 +26,9 @@ export interface CropManagerState {
     angle: number;
     flipX: boolean;
     flipY: boolean;
-    aspectRatio: number | null;
+    aspectRatio: number | false;
     minSize: { width: number; height: number; };
+    initialZoom: number;
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
@@ -92,17 +93,17 @@ class CropManager {
         this.image = img;
     };
 
-    protected getDefaultConfig = (aspectRatio: number | null) => {
+    protected getDefaultConfig = (aspectRatio: number | false) => {
         const rect = this.area.getBoundingClientRect();
         const img = this.image!;
 
-        let zoom = aspectRatio ?
+        let zoom = typeof aspectRatio === 'number' ?
             aspectRatio > 1 ?
                 (rect.height * aspectRatio) / img.width
                 : rect.height / img.height
             : rect.height / img.height;
-        let cropWidth = aspectRatio ? rect.height * aspectRatio : img.width * zoom;
-        let cropHeight = aspectRatio ? rect.height : img.height * zoom;
+        let cropWidth = typeof aspectRatio === 'number' ? rect.height * aspectRatio : img.width * zoom;
+        let cropHeight = typeof aspectRatio === 'number' ? rect.height : img.height * zoom;
 
         const cropX = (rect.width / 2) - cropWidth / 2;
         const cropY = 0;
@@ -126,7 +127,7 @@ class CropManager {
                 height: imageHeight,
             },
             zoom,
-            minZoom: zoom,
+            initialZoom: zoom,
             aspectRatio,
         };
     };
@@ -385,7 +386,7 @@ class CropManager {
         this.changeState({flipY: flipped});
     };
 
-    public aspectRatio = (aspectRatio: number | null) => {
+    public aspectRatio = (aspectRatio: number | false) => {
         const newConfig = this.getDefaultConfig(aspectRatio);
 
         this.changeState(newConfig);

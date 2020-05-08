@@ -1,8 +1,10 @@
 import React from 'react';
 import Box from "@material-ui/core/Box";
 import makeStyles from "@material-ui/styles/makeStyles/makeStyles";
-import {Crop, DragItemType} from "../CropManager";
+import {Crop, CropManagerState, DragItemType} from "../CropManager";
 import clsx from 'clsx';
+import {Store} from "@muzikanto/observable";
+import StoreConsumer from "@muzikanto/observable/StoreConsumer";
 
 const useStyles = makeStyles(() => ({
     root: {
@@ -63,12 +65,27 @@ const useStyles = makeStyles(() => ({
         transform: 'translate(50%, 50%)',
         cursor: 'nwse-resize'
     },
+    size: {
+        position: 'absolute',
+        right: 10,
+        bottom: 10,
+        padding: '1px 5px',
+        backgroundColor: 'white',
+        borderRadius: 3,
+        fontSize: 13,
+    },
+    sizeBottom: {
+        bottom: -30,
+        minWidth: 'max-content',
+        right: '50%',
+        transform: 'translate(50%, 0)',
+    }
 }), {name: 'Cropper-grid'});
 
 export interface CropperGridProps {
-    crop: Crop;
+    store: Store<CropManagerState>;
 
-    onMouseDown: (type: DragItemType, data: {x: number, y: number}) => void;
+    onMouseDown: (type: DragItemType, start: { x: number, y: number }) => void;
     onMouseUp: () => void;
 
     areaRef: (ref: HTMLDivElement) => void;
@@ -77,8 +94,6 @@ export interface CropperGridProps {
 
 function CropperGrid(props: CropperGridProps) {
     const classes = useStyles();
-
-    const crop = props.crop;
 
     const onMouseDown = (type: DragItemType) => (e: any) => {
         props.onMouseDown(type, {x: e.clientX, y: e.clientY});
@@ -90,42 +105,76 @@ function CropperGrid(props: CropperGridProps) {
             onMouseUp={props.onMouseUp}
             ref={props.areaRef}
         >
-            <div
-                className={classes.grid}
-                style={{
-                    left: crop.x,
-                    top: crop.y,
-                    width: crop.width,
-                    height: crop.height,
-                }}
-                ref={props.gridRef}
-                // onMouseDown={onMouseDown('image')}
-            >
-                <Box
-                    className={clsx(classes.circle, classes.lt)}
-                    onMouseDown={onMouseDown('lt')}
-                >
-                    <div className={classes.circleIcon}/>
-                </Box>
-                <Box
-                    className={clsx(classes.circle, classes.rt)}
-                    onMouseDown={onMouseDown('rt')}
-                >
-                    <div className={classes.circleIcon}/>
-                </Box>
-                <Box
-                    className={clsx(classes.circle, classes.lb)}
-                    onMouseDown={onMouseDown('lb')}
-                >
-                    <div className={classes.circleIcon}/>
-                </Box>
-                <Box
-                    className={clsx(classes.circle, classes.rb)}
-                    onMouseDown={onMouseDown('rb')}
-                >
-                    <div className={classes.circleIcon}/>
-                </Box>
-            </div>
+            <StoreConsumer store={props.store} selector={s => s.crop}>
+                {
+                    (crop: Crop) => {
+                        return (
+                            <div
+                                className={classes.grid}
+                                style={{
+                                    left: crop.x,
+                                    top: crop.y,
+                                    width: crop.width,
+                                    height: crop.height,
+                                }}
+                                ref={props.gridRef}
+                            >
+                                <Box
+                                    className={clsx(classes.circle, classes.lt)}
+                                    onMouseDown={onMouseDown('lt')}
+                                >
+                                    <div className={classes.circleIcon}/>
+                                </Box>
+                                <Box
+                                    className={clsx(classes.circle, classes.rt)}
+                                    onMouseDown={onMouseDown('rt')}
+                                >
+                                    <div className={classes.circleIcon}/>
+                                </Box>
+                                <Box
+                                    className={clsx(classes.circle, classes.lb)}
+                                    onMouseDown={onMouseDown('lb')}
+                                >
+                                    <div className={classes.circleIcon}/>
+                                </Box>
+                                <Box
+                                    className={clsx(classes.circle, classes.rb)}
+                                    onMouseDown={onMouseDown('rb')}
+                                >
+                                    <div className={classes.circleIcon}/>
+                                </Box>
+
+                                <StoreConsumer
+                                    store={props.store}
+                                    selector={s => ({
+                                        initialZoom: s.initialZoom,
+                                        zoom: s.zoom,
+                                        image: s.imageCrop
+                                    })}
+                                >
+                                    {
+                                        ({zoom, image}: { zoom: number; image: Crop; }) => {
+                                            const w = image.width - (image.width * zoom - crop.width);
+                                            const h = image.height - (image.height * zoom - crop.height);
+
+                                            const width = Math.round(w * zoom);
+                                            const height = Math.round(h * zoom);
+
+                                            return (
+                                                <div
+                                                    className={clsx(classes.size, {[classes.sizeBottom]: crop.width < 100})}
+                                                >
+                                                    {width} x {height}
+                                                </div>
+                                            )
+                                        }
+                                    }
+                                </StoreConsumer>
+                            </div>
+                        )
+                    }
+                }
+            </StoreConsumer>
         </div>
     );
 }
