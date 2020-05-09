@@ -14,6 +14,7 @@ import {Store} from "@muzikanto/observable";
 import {CropperAspectRationKeys, CropperCustomAspectRation, getDefaultAspectRatio} from "./blocks/CropperAspectRatio";
 import Typography from "@material-ui/core/Typography";
 import LinearProgress from "@material-ui/core/LinearProgress";
+import CropperSubBarColors from "./blocks/CropperSubBarColors";
 
 const styles = () => ({
     root: {
@@ -113,6 +114,12 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 height: 50 || this.props.minHeight,
             },
             loadedImage: false,
+
+            filterBrightness: 100,
+            filterContrast: 1,
+            filterSaturate: 100,
+            filterGrayScale: 0,
+            filterBlur: 0,
         });
     }
 
@@ -126,34 +133,46 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 this.props.managerRef(this.manager);
             }
 
-            document.addEventListener('mousemove', this.onMouseMove);
-            document.addEventListener('mouseup', this.clearDragged);
-            document.addEventListener('mouseleave', this.clearDragged);
-
-            this.gridRef.addEventListener('wheel', this.onMouseWheel);
-            this.canvasRef.addEventListener('mousedown', this.onMouseDown);
-            this.areaRef.addEventListener('mousedown', this.onMouseDown);
+            this.bindEvents();
 
             this.manager.loadImage(this.props.src);
         }
     }
 
-    public componentWillUnmount(): void {
+    public bindEvents = () => {
+        document.addEventListener('mousemove', this.onMouseMove);
+        document.addEventListener('mouseup', this.clearDragged);
+        document.addEventListener('mouseleave', this.clearDragged);
+
+        if (this.gridRef && this.areaRef && this.canvasRef) {
+            this.gridRef.addEventListener('wheel', this.onMouseWheel);
+            this.canvasRef.addEventListener('mousedown', this.onMouseDown);
+            this.areaRef.addEventListener('mousedown', this.onMouseDown);
+        }
+    }
+    public unBindEvents = () => {
         document.removeEventListener('mousemove', this.onMouseMove);
         document.removeEventListener('mouseup', this.clearDragged);
         document.removeEventListener('mouseleave', this.clearDragged);
 
-        if (this.gridRef) {
+        if (this.gridRef && this.areaRef && this.canvasRef) {
             this.gridRef.removeEventListener('wheel', this.onMouseWheel);
-        }
-
-        if (this.canvasRef) {
             this.canvasRef.removeEventListener('mousedown', this.onMouseDown);
-        }
-
-        if (this.areaRef) {
             this.areaRef.removeEventListener('mousedown', this.onMouseDown);
         }
+    }
+
+    public componentDidUpdate(prevProps: Readonly<CropperProps>, prevState: Readonly<CropperState>) {
+        if (this.state.tab === 0 && prevState.tab === 1) {
+            this.bindEvents();
+        }
+        if (this.state.tab !== 0 && prevState.tab === 0) {
+            this.unBindEvents();
+        }
+    }
+
+    public componentWillUnmount(): void {
+        this.unBindEvents();
     }
 
     public render() {
@@ -232,6 +251,13 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                                         }
                                     </StoreConsumer>
                                 }
+                            </CropperTab>
+
+                            <CropperTab tab={this.state.tab} value={1}>
+                                <CropperSubBarColors
+                                    store={this.store}
+                                    manager={this.manager!}
+                                />
                             </CropperTab>
 
                             <canvas

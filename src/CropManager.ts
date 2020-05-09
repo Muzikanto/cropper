@@ -31,6 +31,12 @@ export interface CropManagerState {
     changed: boolean;
     lastChanged: Date | null;
     loadedImage: boolean;
+
+    filterBrightness: number;
+    filterSaturate: number;
+    filterBlur: number;
+    filterContrast: number;
+    filterGrayScale: number;
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
@@ -143,7 +149,7 @@ class CropManager {
         const state = this.store.get();
         const image = this.image!;
         const crop = state.crop;
-        const imageCrop = state.imageCrop;
+        // const imageCrop = state.imageCrop;
         const ctx = this.ctx;
 
         const horizontalMargin = 24;
@@ -165,14 +171,22 @@ class CropManager {
         const cropTop = crop.y + topMargin;
         const cropBottom = cropTop + crop.height;
 
-        const translateImageX = (imageCrop.x + horizontalMargin + (imageCrop.width * zoom) / 2);
-        const translateImageY = (imageCrop.y + topMargin + (imageCrop.height * zoom) / 2);
+        // const translateImageX = (imageCrop.x + horizontalMargin + (imageCrop.width * zoom) / 2);
+        // const translateImageY = (imageCrop.y + topMargin + (imageCrop.height * zoom) / 2);
         const translateX = (crop.x + horizontalMargin + (crop.width) / 2);
         const translateY = (crop.y + topMargin + (crop.height) / 2);
 
         // clear canvas
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         ctx.save();
+
+       ctx.filter = [
+           `brightness(${state.filterBrightness}%)`,
+           `saturate(${state.filterSaturate}%)`,
+           `blur(${state.filterBlur}px)`,
+           `contrast(${state.filterContrast})`,
+           `grayscale(${state.filterGrayScale})`,
+       ].join(' ');
 
         // set center of canvas
         ctx.translate(translateX, translateY);
@@ -405,6 +419,22 @@ class CropManager {
         const {crop} = this.store.get();
 
         return cropImage(this.ctx!, crop);
+    }
+
+    public filterGrayScale = (filterGrayScale: number) => {
+        this.changeState({filterGrayScale});
+    }
+    public filterBlur = (filterBlur: number) => {
+        this.changeState({filterBlur});
+    }
+    public filterBrightness = (filterBrightness: number) => {
+        this.changeState({filterBrightness});
+    }
+    public filterSaturate = (filterSaturate: number) => {
+        this.changeState({filterSaturate});
+    }
+    public filterContrast = (filterContrast: number) => {
+        this.changeState({filterContrast});
     }
 }
 

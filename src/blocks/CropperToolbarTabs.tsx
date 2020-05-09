@@ -3,9 +3,9 @@ import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 import makeStyles from '@material-ui/styles/makeStyles/makeStyles';
 import CropIcon from '@material-ui/icons/Crop';
-import CropperFilterIcon from './CropperFilterIcon';
+// import CropperFilterIcon from './CropperFilterIcon';
 import CropperColorsIcon from './CropperColorsIcon';
-import ResizeIcon from '@material-ui/icons/PhotoSizeSelectLarge';
+// import ResizeIcon from '@material-ui/icons/PhotoSizeSelectLarge';
 
 const useStyles = makeStyles(() => ({
     tabs: {
@@ -46,21 +46,21 @@ function CropperToolbarTabs(props: CropperToolbarTabsProps) {
                 icon={<CropIcon/>}
                 className={classes.tab}
             />
-            <Tab
-                label='Filter'
-                icon={<CropperFilterIcon/>}
-                className={classes.tab}
-            />
+            {/*<Tab*/}
+            {/*    label='Filter'*/}
+            {/*    icon={<CropperFilterIcon/>}*/}
+            {/*    className={classes.tab}*/}
+            {/*/>*/}
             <Tab
                 label='Colors'
                 icon={<CropperColorsIcon/>}
                 className={classes.tab}
             />
-            <Tab
-                label='Resize'
-                icon={<ResizeIcon/>}
-                className={classes.tab}
-            />
+            {/*<Tab*/}
+            {/*    label='Resize'*/}
+            {/*    icon={<ResizeIcon/>}*/}
+            {/*    className={classes.tab}*/}
+            {/*/>*/}
         </Tabs>
     );
 }

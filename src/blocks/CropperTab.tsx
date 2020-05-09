@@ -17,11 +17,7 @@ function CropperTab(props: CropperTabProps) {
             style={{height: 'calc(100% - 76px)'}}
             {...other}
         >
-            {tab === value && (
-                <>
-                    {children}
-                </>
-            )}
+            {children}
         </div>
     );
 }
