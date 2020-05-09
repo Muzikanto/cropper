@@ -149,7 +149,6 @@ function CropperGrid(props: CropperGridProps) {
                                 >
                                     <div className={classes.circleIcon}/>
                                 </Box>
-
                                 {
                                     props.sizePreview &&
                                     <StoreConsumer

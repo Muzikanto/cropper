@@ -20,15 +20,17 @@ export interface CropManagerState {
     crop: Crop;
     imageCrop: Crop;
     zoom: number;
-    initialChanged: boolean;
-    changed: boolean;
-    lastChanged: Date | null;
     angle: number;
     flipX: boolean;
     flipY: boolean;
     aspectRatio: number | false;
     minSize: { width: number; height: number; };
+
     initialZoom: number;
+    initialChanged: boolean;
+    changed: boolean;
+    lastChanged: Date | null;
+    loadedImage: boolean;
 }
 
 export type DragItemType = 'lt' | 'rt' | 'lb' | 'rb' | 'image';
@@ -74,6 +76,8 @@ class CropManager {
     };
 
     public loadImage = (src: string) => {
+        this.store.set({...this.store.get(), loadedImage: false});
+
         const img = new Image();
 
         img.setAttribute('crossOrigin', 'Anonymous');
@@ -83,6 +87,7 @@ class CropManager {
             const defaultConfig = {
                 ...this.store.get(),
                 ...this.getDefaultConfig(this.store.get().aspectRatio),
+                loadedImage: true,
             };
 
             this.changeState(defaultConfig);

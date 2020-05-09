@@ -12,8 +12,8 @@ import CropperRotate from './blocks/CropperRotate/CropperRotate.container';
 import CropperTab from "./blocks/CropperTab";
 import {Store} from "@muzikanto/observable";
 import {CropperAspectRationKeys, CropperCustomAspectRation, getDefaultAspectRatio} from "./blocks/CropperAspectRatio";
-
-// https://pqina.nl/doka/?ref=filepond#features
+import Typography from "@material-ui/core/Typography";
+import LinearProgress from "@material-ui/core/LinearProgress";
 
 const styles = () => ({
     root: {
@@ -23,6 +23,25 @@ const styles = () => ({
         background: 'radial-gradient(#4f4c4c, #000000)',
         borderRadius: 10,
         boxShadow: '0 0.65rem 0.5rem -0.5rem rgba(0,0,0,.5), 0 0.75rem 3rem rgba(0,0,0,.5)',
+    },
+    loadingBox: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 2,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexDirection: 'column',
+        color: 'white',
+        borderRadius: 10,
+        background: 'radial-gradient(#4f4c4c, #000000)',
+        filter: 'brightness(0.6)',
+    },
+    hidden: {
+        opacity: 0,
     },
     subBar: {
         height: 72,
@@ -59,6 +78,8 @@ export interface CropperProps extends WithStyles<typeof styles> {
     rotate?: boolean;
     rotateToAngle?: boolean;
     sizePreview?: boolean;
+
+    managerRef?: (manager: CropManager) => void;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -89,6 +110,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 width: 50 || this.props.minWidth,
                 height: 50 || this.props.minHeight,
             },
+            loadedImage: false,
         });
     }
 
@@ -97,6 +119,10 @@ class Cropper extends React.Component<CropperProps, CropperState> {
     public componentDidMount(): void {
         if (this.areaRef && this.canvasRef && this.gridRef) {
             this.manager = new CropManager(this.store, this.canvasRef, this.areaRef);
+
+            if (this.props.managerRef) {
+                this.props.managerRef(this.manager);
+            }
 
             document.addEventListener('mousemove', this.onMouseMove);
             document.addEventListener('mouseup', this.clearDragged);
@@ -136,81 +162,94 @@ class Cropper extends React.Component<CropperProps, CropperState> {
         const rotateToAngle = this.props.rotateToAngle || this.props.rotate;
 
         return (
-            <Box
-                width={928}
-                height={528}
-                className={classes.root}
-            >
-                <CropperToolbar
-                    store={store}
-                    tab={tab}
-                    onChangeTab={(v) => this.setState((prevState) => ({...prevState, tab: v}))}
-                    onDone={() => {
-                        const base64 = this.manager!.toBase64();
+            <StoreConsumer store={this.store} selector={s => s.loadedImage}>
+                {
+                    (loaded: boolean) =>
+                        <Box
+                            width={928}
+                            height={528}
+                            className={classes.root}
+                        >
+                            <CropperToolbar
+                                store={store}
+                                tab={tab}
+                                onChangeTab={(v) => this.setState((prevState) => ({...prevState, tab: v}))}
+                                onDone={() => {
+                                    const base64 = this.manager!.toBase64();
 
-                        this.props.onChange(base64);
-                    }}
-                    onRefresh={() => this.manager!.refreshState()}
-                />
+                                    this.props.onChange(base64);
+                                }}
+                                onRefresh={() => this.manager!.refreshState()}
+                            />
 
-                <CropperTab tab={this.state.tab} value={0}>
-                    <CropperSubBarCrop
-                        className={classes.subBar}
-                        store={store}
+                            <CropperTab tab={this.state.tab} value={0}>
+                                <CropperSubBarCrop
+                                    className={classes.subBar}
+                                    store={store}
 
-                        onAspectRatio={v => this.manager!.aspectRatio(v)}
-                        onFlipX={() => this.manager!.flipX()}
-                        onFlipY={() => this.manager!.flipY()}
-                        onRotateLeft={() => this.manager!.rotateLeft()}
-                        onRotateRight={() => this.manager!.rotateRight()}
+                                    onAspectRatio={v => this.manager!.aspectRatio(v)}
+                                    onFlipX={() => this.manager!.flipX()}
+                                    onFlipY={() => this.manager!.flipY()}
+                                    onRotateLeft={() => this.manager!.rotateLeft()}
+                                    onRotateRight={() => this.manager!.rotateRight()}
 
-                        aspectRatio={this.props.aspectRatio}
-                        flippedX={this.props.flippedX}
-                        flippedY={this.props.flippedY}
-                        flipped={this.props.flipped}
-                        rotatedLeft={this.props.rotatedLeft}
-                        rotatedRight={this.props.rotatedRight}
-                        rotate={this.props.rotate}
-                    />
+                                    aspectRatio={this.props.aspectRatio}
+                                    flippedX={this.props.flippedX}
+                                    flippedY={this.props.flippedY}
+                                    flipped={this.props.flipped}
+                                    rotatedLeft={this.props.rotatedLeft}
+                                    rotatedRight={this.props.rotatedRight}
+                                    rotate={this.props.rotate}
+                                />
 
-                    <CropperGrid
-                        store={store}
-                        onMouseUp={this.clearDragged}
-                        onMouseDown={(type, data) => this.manager!.setDragged(type, data)}
-                        areaRef={areaRef => this.areaRef = areaRef}
-                        gridRef={gridRef => this.gridRef = gridRef}
+                                <CropperGrid
+                                    store={store}
+                                    onMouseUp={this.clearDragged}
+                                    onMouseDown={(type, data) => this.manager!.setDragged(type, data)}
+                                    areaRef={areaRef => this.areaRef = areaRef}
+                                    gridRef={gridRef => this.gridRef = gridRef}
 
-                        rotateToAngle={this.props.rotateToAngle}
-                        sizePreview={this.props.sizePreview}
-                    />
+                                    rotateToAngle={this.props.rotateToAngle}
+                                    sizePreview={this.props.sizePreview}
+                                />
 
-                    {
-                        rotateToAngle &&
-                        <StoreConsumer store={store} selector={s => s.angle}>
-                            {
-                                (angle: number) => {
-                                    return (
-                                        <CropperRotate
-                                            value={angle}
-                                            onChange={v => {
-                                                this.manager!.rotate(v);
-                                            }}
-                                        />
-                                    );
+                                {
+                                    rotateToAngle &&
+                                    <StoreConsumer store={store} selector={s => s.angle}>
+                                        {
+                                            (angle: number) => {
+                                                return (
+                                                    <CropperRotate
+                                                        value={angle}
+                                                        onChange={v => {
+                                                            this.manager!.rotate(v);
+                                                        }}
+                                                    />
+                                                );
+                                            }
+                                        }
+                                    </StoreConsumer>
                                 }
-                            }
-                        </StoreConsumer>
-                    }
-                </CropperTab>
+                            </CropperTab>
 
-                <canvas
-                    onClick={e => console.log(e)}
-                    ref={canvasRef => this.canvasRef = canvasRef}
-                    className={classes.canvas}
-                    width={928}
-                    height={528}
-                />
-            </Box>
+                            <canvas
+                                onClick={e => console.log(e)}
+                                ref={canvasRef => this.canvasRef = canvasRef}
+                                className={classes.canvas}
+                                width={928}
+                                height={528}
+                            />
+
+                            {
+                                !loaded &&
+                                <div className={classes.loadingBox}>
+                                    <Typography>Loading</Typography>
+                                    <LinearProgress style={{width: 300, marginTop: 7}}/>
+                                </div>
+                            }
+                        </Box>
+                }
+            </StoreConsumer>
         );
     }
 
