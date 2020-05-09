@@ -14,6 +14,7 @@ function CropperTab(props: CropperTabProps) {
             role="tab-panel"
             hidden={tab !== value}
             aria-labelledby={`simple-tab-${value}`}
+            style={{height: 'calc(100% - 76px)'}}
             {...other}
         >
             {tab === value && (

@@ -27,6 +27,7 @@ export function Picture() {
                 rotatedLeft
                 rotatedRight
                 rotateToAngle
+                sizePreview
                 aspectRatio={[
                     'free', 'square', 'landscape', 'portrait',
                     {icon: <CustomIcon/>, value: 13 / 10, label: 'custom'},

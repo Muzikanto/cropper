@@ -58,6 +58,7 @@ export interface CropperProps extends WithStyles<typeof styles> {
     rotatedRight?: boolean;
     rotate?: boolean;
     rotateToAngle?: boolean;
+    sizePreview?: boolean;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -178,6 +179,9 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                         onMouseDown={(type, data) => this.manager!.setDragged(type, data)}
                         areaRef={areaRef => this.areaRef = areaRef}
                         gridRef={gridRef => this.gridRef = gridRef}
+
+                        rotateToAngle={this.props.rotateToAngle}
+                        sizePreview={this.props.sizePreview}
                     />
 
                     {

@@ -10,7 +10,7 @@ const useStyles = makeStyles(() => ({
     root: {
         zIndex: 1,
         userSelect: 'none',
-        height: 296,
+        // height: 296,
         margin: '4px 24px 24px 24px',
         position: 'relative',
         cursor: 'move',
@@ -90,6 +90,9 @@ export interface CropperGridProps {
 
     areaRef: (ref: HTMLDivElement) => void;
     gridRef: (ref: HTMLDivElement) => void;
+
+    rotateToAngle?: boolean;
+    sizePreview?: boolean;
 }
 
 function CropperGrid(props: CropperGridProps) {
@@ -99,11 +102,14 @@ function CropperGrid(props: CropperGridProps) {
         props.onMouseDown(type, {x: e.clientX, y: e.clientY});
     };
 
+    const height = 296 + (props.rotateToAngle ? 0 : 56);
+
     return (
         <div
             className={classes.root}
             onMouseUp={props.onMouseUp}
             ref={props.areaRef}
+            style={{height}}
         >
             <StoreConsumer store={props.store} selector={s => s.crop}>
                 {
@@ -144,32 +150,38 @@ function CropperGrid(props: CropperGridProps) {
                                     <div className={classes.circleIcon}/>
                                 </Box>
 
-                                <StoreConsumer
-                                    store={props.store}
-                                    selector={s => ({
-                                        initialZoom: s.initialZoom,
-                                        zoom: s.zoom,
-                                        image: s.imageCrop
-                                    })}
-                                >
-                                    {
-                                        ({zoom, image}: { zoom: number; image: Crop; }) => {
-                                            const w = image.width - (image.width * zoom - crop.width);
-                                            const h = image.height - (image.height * zoom - crop.height);
+                                {
+                                    props.sizePreview &&
+                                    <StoreConsumer
+                                        store={props.store}
+                                        selector={s => ({
+                                            initialZoom: s.initialZoom,
+                                            zoom: s.zoom,
+                                            image: s.imageCrop
+                                        })}
+                                    >
+                                        {
+                                            ({zoom, image}: { zoom: number; image: Crop; }) => {
+                                                const imgWidth = image.width * zoom;
+                                                const imgHeight = image.width * zoom;
 
-                                            const width = Math.round(w * zoom);
-                                            const height = Math.round(h * zoom);
+                                                const w = imgWidth - (imgWidth - crop.width);
+                                                const h = imgHeight - (imgHeight - crop.height);
 
-                                            return (
-                                                <div
-                                                    className={clsx(classes.size, {[classes.sizeBottom]: crop.width < 100})}
-                                                >
-                                                    {width} x {height}
-                                                </div>
-                                            )
+                                                const width = Math.round(w / zoom);
+                                                const height = Math.round(h / zoom);
+
+                                                return (
+                                                    <div
+                                                        className={clsx(classes.size, {[classes.sizeBottom]: crop.width < 100})}
+                                                    >
+                                                        {width} x {height}
+                                                    </div>
+                                                )
+                                            }
                                         }
-                                    }
-                                </StoreConsumer>
+                                    </StoreConsumer>
+                                }
                             </div>
                         )
                     }
