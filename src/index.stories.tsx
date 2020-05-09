@@ -38,6 +38,8 @@ export function Cropper() {
                     'free', 'square', 'landscape', 'portrait',
                     {icon: <CustomIcon/>, value: 13 / 10, label: 'custom'},
                 ]}
+
+                // backgroundFillStyle={'rgba(255, 255, 255, 0.6)'}
             />
             <img src={img}/>
         </Box>

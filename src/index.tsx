@@ -20,8 +20,8 @@ const styles = () => ({
         boxSizing: 'border-box',
         // overflow: 'hidden',
         position: 'relative',
-        background: 'radial-gradient(#4f4c4c, #000000)',
         borderRadius: 10,
+        background: 'radial-gradient(#4f4c4c, #000000)',
         boxShadow: '0 0.65rem 0.5rem -0.5rem rgba(0,0,0,.5), 0 0.75rem 3rem rgba(0,0,0,.5)',
     },
     loadingBox: {
@@ -80,6 +80,8 @@ export interface CropperProps extends WithStyles<typeof styles> {
     sizePreview?: boolean;
 
     managerRef?: (manager: CropManager) => void;
+
+    backgroundFillStyle?: string;
 }
 
 class Cropper extends React.Component<CropperProps, CropperState> {
@@ -118,7 +120,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
 
     public componentDidMount(): void {
         if (this.areaRef && this.canvasRef && this.gridRef) {
-            this.manager = new CropManager(this.store, this.canvasRef, this.areaRef);
+            this.manager = new CropManager(this.store, this.canvasRef, this.areaRef, {backgroundFillStyle: this.props.backgroundFillStyle});
 
             if (this.props.managerRef) {
                 this.props.managerRef(this.manager);

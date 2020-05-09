@@ -49,12 +49,14 @@ class CropManager {
     public dragged: DraggedData | null = null;
     public store: Store<CropManagerState>;
     public defaultState: CropManagerState;
+    protected fillStyle: string;
 
-    constructor(store: Store<CropManagerState>, canvas: HTMLCanvasElement, area: HTMLDivElement) {
+    constructor(store: Store<CropManagerState>, canvas: HTMLCanvasElement, area: HTMLDivElement, options: { backgroundFillStyle?: string; }) {
         this.canvas = canvas;
         this.area = area;
         this.store = store;
         this.defaultState = store.get();
+        this.fillStyle = options.backgroundFillStyle || 'rgba(0,0,0,0.6)';
 
         this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
     }
@@ -165,21 +167,23 @@ class CropManager {
 
         const translateImageX = (imageCrop.x + horizontalMargin + (imageCrop.width * zoom) / 2);
         const translateImageY = (imageCrop.y + topMargin + (imageCrop.height * zoom) / 2);
+        const translateX = (crop.x + horizontalMargin + (crop.width) / 2);
+        const translateY = (crop.y + topMargin + (crop.height) / 2);
 
         // clear canvas
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         ctx.save();
 
         // set center of canvas
-        ctx.translate(translateImageX, translateImageY);
+        ctx.translate(translateX, translateY);
 
         ctx.rotate(rad);
         ctx.scale(flipX, flipY);
 
         // draw image
         ctx.drawImage(image,
-            (x - translateImageX) * flipX,
-            (y - translateImageY) * flipY,
+            (x - translateX) * flipX,
+            (y - translateY) * flipY,
             w * flipX,
             h * flipY,
         );
@@ -187,7 +191,7 @@ class CropManager {
         ctx.restore();
 
         // darken background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = this.fillStyle;
 
         ctx.fillRect(
             0,
@@ -267,7 +271,7 @@ class CropManager {
         if (this.dragged) {
             const {x, y} = this.moveImageToPos(
                 target, this.dragged.start,
-                state.crop, state.imageCrop, state.zoom,
+                state.crop, state.imageCrop, state.zoom, state.angle,
             );
 
             this.dragged!.start = target;

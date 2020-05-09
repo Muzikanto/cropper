@@ -5,14 +5,18 @@ import FlipIcon from '@material-ui/icons/Flip';
 import RotateLeftIcon from '@material-ui/icons/RotateLeft';
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
 import CropperAspectRatio, {CropperAspectRationKeys, CropperCustomAspectRation} from "./CropperAspectRatio";
-import makeStyles from "@material-ui/styles/makeStyles/makeStyles";
 import {CropManagerState} from "../CropManager";
 import {Store} from "@muzikanto/observable";
 import clsx from 'clsx';
+import withStyles from "@material-ui/core/styles/withStyles";
+import {WithStyles} from "@material-ui/styles";
 
-const useStyles = makeStyles(() => ({
+const styles = () => ({
     root: {
-        height: 72, display: 'flex', justifyContent: 'center', color: 'white',
+        height: 72,
+        display: 'flex',
+        justifyContent: 'center',
+        color: 'white',
     },
     btn: {
         '&.MuiButton-root': {
@@ -20,9 +24,9 @@ const useStyles = makeStyles(() => ({
             textTransform: 'initial',
         },
     },
-}), {name: 'Cropper-subBarCrop'});
+});
 
-export interface CropperSubBarCropProps {
+export interface CropperSubBarCropProps extends WithStyles<typeof styles> {
     className: string;
 
     store: Store<CropManagerState>;
@@ -43,7 +47,7 @@ export interface CropperSubBarCropProps {
 }
 
 function CropperSubBarCrop(props: CropperSubBarCropProps) {
-    const classes = useStyles();
+    const classes = props.classes;
     const store = props.store;
 
     const rotatedLeft = props.rotatedLeft || props.rotate;
@@ -125,4 +129,4 @@ function CropperSubBarCrop(props: CropperSubBarCropProps) {
     );
 }
 
-export default React.memo(CropperSubBarCrop);
+export default React.memo(withStyles(styles, {name: 'Cropper-subBar'})(CropperSubBarCrop));

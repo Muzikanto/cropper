@@ -18,9 +18,6 @@ const useStyles = makeStyles(() => ({
             marginRight: 2,
         },
     },
-    done: {
-        backgroundColor: '#ffd843',
-    },
 }), {name: 'Cropper-tabs'});
 
 export interface CropperToolbarTabsProps {

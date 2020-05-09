@@ -1,12 +1,13 @@
 import React from 'react';
 import Box from "@material-ui/core/Box";
-import makeStyles from "@material-ui/styles/makeStyles/makeStyles";
 import {Crop, CropManagerState, DragItemType} from "../CropManager";
 import clsx from 'clsx';
 import {Store} from "@muzikanto/observable";
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
+import {WithStyles} from "@material-ui/styles";
+import withStyles from "@material-ui/styles/withStyles";
 
-const useStyles = makeStyles(() => ({
+const styles = () => ({
     root: {
         zIndex: 1,
         userSelect: 'none',
@@ -80,9 +81,9 @@ const useStyles = makeStyles(() => ({
         right: '50%',
         transform: 'translate(50%, 0)',
     }
-}), {name: 'Cropper-grid'});
+} as const);
 
-export interface CropperGridProps {
+export interface CropperGridProps extends WithStyles<typeof styles> {
     store: Store<CropManagerState>;
 
     onMouseDown: (type: DragItemType, start: { x: number, y: number }) => void;
@@ -96,7 +97,7 @@ export interface CropperGridProps {
 }
 
 function CropperGrid(props: CropperGridProps) {
-    const classes = useStyles();
+    const classes = props.classes;
 
     const onMouseDown = (type: DragItemType) => (e: any) => {
         props.onMouseDown(type, {x: e.clientX, y: e.clientY});
@@ -190,4 +191,4 @@ function CropperGrid(props: CropperGridProps) {
     );
 }
 
-export default React.memo(CropperGrid)
+export default React.memo(withStyles(styles, {name: 'Cropper-grid'})(CropperGrid));
