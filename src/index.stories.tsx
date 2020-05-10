@@ -13,7 +13,7 @@ export default {
     },
 };
 
-// const img = require('./assets/test.jpg');
+const img = require('./test.jpg');
 
 export function Cropper() {
     const ref = React.useRef<CropManager>(null);
@@ -26,7 +26,7 @@ export function Cropper() {
                     // @ts-ignore
                     ref.current = manager;
                 }}
-                src='https://avatars.mds.yandex.net/get-pdb/1615223/277eda7f-642e-4f62-aa8c-9ec66ed5eb9a/s1200'
+                src={img}
                 onChange={(v) => setImg(v)}
 
                 flippedX={boolean('flippedX', true)}
@@ -50,7 +50,7 @@ export function CropperDialog() {
     return (
         <Dialog fullScreen open>
             <BaseCropper
-                src='https://avatars.mds.yandex.net/get-pdb/1615223/277eda7f-642e-4f62-aa8c-9ec66ed5eb9a/s1200'
+                src={img}
 
                 flippedX={boolean('flippedX', true)}
                 flippedY={boolean('flippedY', true)}

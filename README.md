@@ -9,11 +9,8 @@
 
 -  [Introduction](#introduction)
 -  [Installation](#installation)
--  [Preview](#preview)
 -  [Examples](#examples)
-   -  [base](#base)
-   -  [advanced](#advanced)
--  [API](#api)
+-  [Use](#use)
 -  [License](#license)
 
 <!-- /TOC -->
@@ -22,7 +19,7 @@
 
 Peer dependencies: 
     `react`, `react-dom`,
-    `material-ui/core`, `material-ui/styles`
+    `material-ui/core`, `material-ui/styles`, `material-ui/icons`
 
 ## Installation
 
@@ -32,15 +29,51 @@ npm i @muzikanto/cropper
 yarn add @muzikanto/cropper
 ```
 
+### Introduction
+
+if you are interested in the package, please create an issue in github with your wishes, and then I will make changes
+
+### new features
+
+- add easy customizing styles
+- add light theme
+- add transition effects
+- add filters tab
+- add resize original tab
+- add limited selection
+- add easy use CropManager
+
 ## Examples
 
 [Example in storybook](https://muzikanto.github.io/cropper)
 
-### Base
+### Use
 
 ```typescript jsx
 function Component() {
-  return // TODO
+    const [base64, setBase64] = React.useState('');
+    
+  return (
+      <>
+          <BaseCropper
+              src="https://github.com/Muzikanto/cropper/blob/master/src/test.jpg"
+              onChange={(v) => setBase64(v)}
+    
+              flippedX={true} // show flip x button
+              flippedY={true} // show flip y button
+              rotatedLeft={true} // show rotate left button
+              rotatedRight={true} // show rotate right button
+              rotateToAngle={true} // show bottom rotate line
+              sizePreview={true} // show size preview
+              aspectRatio={[
+                  'free', 'square', 'landscape', 'portrait',
+                  {icon: <CustomIcon/>, value: 13 / 10, label: 'custom'},
+              ]} // list of aspects
+              // aspectRatio={ 16 / 10 } one value => hide select aspectRatio
+          />
+          <img src={base64}/>
+      </>
+  );
 }
 ```
 

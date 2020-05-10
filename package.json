@@ -1,13 +1,13 @@
 {
     "name": "@muzikanto/cropper",
-    "version": "1.0.10",
+    "version": "1.0.0",
     "description": "image crop component",
     "license": "MIT",
     "main": "./index.js",
     "typings": "./index.d.ts",
     "scripts": {
         "start": "start-storybook -p 5001",
-        "build:stories": "build-storybook -o docs",
+        "build:docs": "build-storybook -o docs",
         "build:components": "tsc -b",
         "clean": "rm -rf *.ts && rm -rf *.tsx && rm -rf *.js",
         "build": "npm run clean && tsc -b",
