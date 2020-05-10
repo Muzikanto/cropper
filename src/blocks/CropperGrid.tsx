@@ -42,25 +42,25 @@ const styles = () => ({
         position: 'absolute',
         background: '#f7f7f799',
     },
-    lt: {
+    circle_lt: {
         left: 0,
         top: 0,
         transform: 'translate(-50%, -50%)',
         cursor: 'nwse-resize'
     },
-    rt: {
+    circle_rt: {
         right: 0,
         top: 0,
         transform: 'translate(50%, -50%)',
         cursor: 'nesw-resize'
     },
-    lb: {
+    circle_lb: {
         left: 0,
         bottom: 0,
         transform: 'translate(-50%, 50%)',
         cursor: 'nesw-resize'
     },
-    rb: {
+    circle_rb: {
         right: 0,
         bottom: 0,
         transform: 'translate(50%, 50%)',
@@ -75,7 +75,7 @@ const styles = () => ({
         borderRadius: 3,
         fontSize: 13,
     },
-    sizeBottom: {
+    size_bottom: {
         bottom: -30,
         minWidth: 'max-content',
         right: '50%',
@@ -103,14 +103,14 @@ function CropperGrid(props: CropperGridProps) {
         props.onMouseDown(type, {x: e.clientX, y: e.clientY});
     };
 
-    const height = 296 + (props.rotateToAngle ? 0 : 56);
+    const diffHeight = props.rotateToAngle ? 56 : 0;
 
     return (
         <div
             className={classes.root}
             onMouseUp={props.onMouseUp}
             ref={props.areaRef}
-            style={{height}}
+            style={{height: `calc(100% - ${diffHeight}px - 72px - 24px)`}}
         >
             <StoreConsumer store={props.store} selector={s => s.crop}>
                 {
@@ -127,25 +127,25 @@ function CropperGrid(props: CropperGridProps) {
                                 ref={props.gridRef}
                             >
                                 <Box
-                                    className={clsx(classes.circle, classes.lt)}
+                                    className={clsx(classes.circle, classes.circle_lt)}
                                     onMouseDown={onMouseDown('lt')}
                                 >
                                     <div className={classes.circleIcon}/>
                                 </Box>
                                 <Box
-                                    className={clsx(classes.circle, classes.rt)}
+                                    className={clsx(classes.circle, classes.circle_rt)}
                                     onMouseDown={onMouseDown('rt')}
                                 >
                                     <div className={classes.circleIcon}/>
                                 </Box>
                                 <Box
-                                    className={clsx(classes.circle, classes.lb)}
+                                    className={clsx(classes.circle, classes.circle_lb)}
                                     onMouseDown={onMouseDown('lb')}
                                 >
                                     <div className={classes.circleIcon}/>
                                 </Box>
                                 <Box
-                                    className={clsx(classes.circle, classes.rb)}
+                                    className={clsx(classes.circle, classes.circle_rb)}
                                     onMouseDown={onMouseDown('rb')}
                                 >
                                     <div className={classes.circleIcon}/>
@@ -173,7 +173,7 @@ function CropperGrid(props: CropperGridProps) {
 
                                                 return (
                                                     <div
-                                                        className={clsx(classes.size, {[classes.sizeBottom]: crop.width < 100})}
+                                                        className={clsx(classes.size, {[classes.size_bottom]: crop.width < 100})}
                                                     >
                                                         {width} x {height}
                                                     </div>

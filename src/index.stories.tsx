@@ -4,6 +4,7 @@ import Box from "@material-ui/core/Box";
 import CustomIcon from "@material-ui/icons/Person";
 import {boolean} from "@storybook/addon-knobs";
 import CropManager from "./CropManager";
+import {Dialog} from "@material-ui/core";
 
 export default {
     title: 'Components',
@@ -42,5 +43,27 @@ export function Cropper() {
             />
             <img src={img}/>
         </Box>
+    );
+}
+
+export function CropperDialog() {
+    return (
+        <Dialog fullScreen open>
+            <BaseCropper
+                src='https://avatars.mds.yandex.net/get-pdb/1615223/277eda7f-642e-4f62-aa8c-9ec66ed5eb9a/s1200'
+
+                flippedX={boolean('flippedX', true)}
+                flippedY={boolean('flippedY', true)}
+                rotatedLeft={boolean('rotatedLeft', true)}
+                rotatedRight={boolean('rotatedRight', true)}
+                rotateToAngle={boolean('rotateToAngle', true)}
+                sizePreview={boolean('sizePreview', true)}
+                aspectRatio={[
+                    'free', 'square', 'landscape', 'portrait',
+                    {icon: <CustomIcon/>, value: 13 / 10, label: 'custom'},
+                ]}
+                container={{width: 1295, height: 754}}
+            />
+        </Dialog>
     );
 }

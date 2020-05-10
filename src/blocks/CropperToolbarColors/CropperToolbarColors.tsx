@@ -1,6 +1,6 @@
 import React from 'react';
 import Toolbar from "@material-ui/core/Toolbar";
-import CropManager, {CropManagerState} from "../CropManager";
+import CropManager, {CropManagerState} from "../../CropManager";
 import {Store} from "@muzikanto/observable";
 import withStyles from "@material-ui/core/styles/withStyles";
 import {WithStyles} from "@material-ui/styles";
@@ -42,7 +42,7 @@ function SliderWithLabel({label, className, ...props}: SliderProps<any> & { labe
     );
 }
 
-function CropperSubBarColors(props: CropperSubBarColorsProps) {
+function CropperToolbarColors(props: CropperSubBarColorsProps) {
     const classes = props.classes;
     const store = props.store;
 
@@ -127,4 +127,4 @@ function CropperSubBarColors(props: CropperSubBarColorsProps) {
     );
 }
 
-export default React.memo(withStyles(styles, {name: 'Cropper-subBar'})(CropperSubBarColors));
+export default React.memo(withStyles(styles, {name: 'CropperToolbar-colors'})(CropperToolbarColors));

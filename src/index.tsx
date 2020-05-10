@@ -5,16 +5,21 @@ import {WithStyles} from '@material-ui/styles';
 import CropManager, {CropManagerState} from './CropManager';
 import createStore from "@muzikanto/observable/createStore";
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
-import CropperSubBarCrop from "./blocks/CropperSubBarCrop";
-import CropperToolbar from "./blocks/CropperToolbar";
+import CropperSubBarCrop from "./blocks/CropperToolbarTools/CropperToolbarTools";
+import CropperToolbar from "./blocks/CropperToolbar/CropperToolbar";
 import CropperGrid from "./blocks/CropperGrid";
 import CropperRotate from './blocks/CropperRotate/CropperRotate.container';
-import CropperTab from "./blocks/CropperTab";
+import CropperTab from "./blocks/CropperToolbar/blocks/CropperTab";
 import {Store} from "@muzikanto/observable";
-import {CropperAspectRationKeys, CropperCustomAspectRation, getDefaultAspectRatio} from "./blocks/CropperAspectRatio";
+import {
+    CropperAspectRationKeys,
+    CropperCustomAspectRation,
+    getDefaultAspectRatio
+} from "./blocks/CropperToolbarTools/blocks/CropperAspectRatio";
 import Typography from "@material-ui/core/Typography";
 import LinearProgress from "@material-ui/core/LinearProgress";
-import CropperSubBarColors from "./blocks/CropperSubBarColors";
+import CropperSubBarColors from "./blocks/CropperToolbarColors/CropperToolbarColors";
+import clsx from 'clsx';
 
 const styles = () => ({
     root: {
@@ -62,8 +67,12 @@ export interface CropperState {
 
 export interface CropperProps extends WithStyles<typeof styles> {
     src: string;
+    style?: React.CSSProperties;
+    className?: string;
 
-    onChange: (base64: string) => void;
+    onChange?: (base64: string) => void;
+
+    container?: { width: number; height: number; };
 
     minZoom?: number;
     maxZoom?: number;
@@ -89,6 +98,7 @@ class Cropper extends React.Component<CropperProps, CropperState> {
     public gridRef: HTMLDivElement | null = null;
     public areaRef: HTMLDivElement | null = null;
     public canvasRef: HTMLCanvasElement | null = null;
+    protected container: { width: number; height: number; };
 
     public state = {tab: 0};
 
@@ -121,6 +131,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
             filterGrayScale: 0,
             filterBlur: 0,
         });
+
+        this.container = props.container || {width: 928, height: 528};
     }
 
     protected manager: CropManager | null = null;
@@ -187,9 +199,10 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                 {
                     (loaded: boolean) =>
                         <Box
-                            width={928}
-                            height={528}
-                            className={classes.root}
+                            width={this.container.width}
+                            height={this.container.height}
+                            className={clsx(classes.root, this.props.className)}
+                            style={this.props.style}
                         >
                             <CropperToolbar
                                 store={store}
@@ -198,7 +211,9 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                                 onDone={() => {
                                     const base64 = this.manager!.toBase64();
 
-                                    this.props.onChange(base64);
+                                    if (this.props.onChange) {
+                                        this.props.onChange(base64);
+                                    }
                                 }}
                                 onRefresh={() => this.manager!.refreshState()}
                             />
@@ -264,8 +279,8 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                                 onClick={e => console.log(e)}
                                 ref={canvasRef => this.canvasRef = canvasRef}
                                 className={classes.canvas}
-                                width={928}
-                                height={528}
+                                width={this.container.width}
+                                height={this.container.height}
                             />
 
                             {

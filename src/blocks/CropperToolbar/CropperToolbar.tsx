@@ -3,10 +3,10 @@ import Toolbar from "@material-ui/core/Toolbar";
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
 import IconButton from "@material-ui/core/IconButton";
 import RestoreIcon from '@material-ui/icons/Restore';
-import CropperToolbarTabs from "./CropperToolbarTabs";
+import CropperToolbarTabs from "./blocks/CropperToolbarTabs";
 import Button from "@material-ui/core/Button";
 import makeStyles from "@material-ui/styles/makeStyles/makeStyles";
-import {CropManagerState} from "../CropManager";
+import {CropManagerState} from "../../CropManager";
 import {Store} from "@muzikanto/observable";
 
 const useStyles = makeStyles(() => ({

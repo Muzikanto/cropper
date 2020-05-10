@@ -4,8 +4,8 @@ import Button from "@material-ui/core/Button";
 import FlipIcon from '@material-ui/icons/Flip';
 import RotateLeftIcon from '@material-ui/icons/RotateLeft';
 import StoreConsumer from "@muzikanto/observable/StoreConsumer";
-import CropperAspectRatio, {CropperAspectRationKeys, CropperCustomAspectRation} from "./CropperAspectRatio";
-import {CropManagerState} from "../CropManager";
+import CropperAspectRatio, {CropperAspectRationKeys, CropperCustomAspectRation} from "./blocks/CropperAspectRatio";
+import {CropManagerState} from "../../CropManager";
 import {Store} from "@muzikanto/observable";
 import clsx from 'clsx';
 import withStyles from "@material-ui/core/styles/withStyles";
@@ -46,7 +46,7 @@ export interface CropperSubBarCropProps extends WithStyles<typeof styles> {
     rotate?: boolean;
 }
 
-function CropperSubBarCrop(props: CropperSubBarCropProps) {
+function CropperToolbarTools(props: CropperSubBarCropProps) {
     const classes = props.classes;
     const store = props.store;
 
@@ -129,4 +129,4 @@ function CropperSubBarCrop(props: CropperSubBarCropProps) {
     );
 }
 
-export default React.memo(withStyles(styles, {name: 'Cropper-subBar'})(CropperSubBarCrop));
+export default React.memo(withStyles(styles, {name: 'CropperToolbar-tools'})(CropperToolbarTools));

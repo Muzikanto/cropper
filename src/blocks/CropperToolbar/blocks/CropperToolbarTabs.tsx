@@ -4,7 +4,7 @@ import Tab from '@material-ui/core/Tab';
 import makeStyles from '@material-ui/styles/makeStyles/makeStyles';
 import CropIcon from '@material-ui/icons/Crop';
 // import CropperFilterIcon from './CropperFilterIcon';
-import CropperColorsIcon from './CropperColorsIcon';
+import CropperColorsIcon from '../../Icons/CropperColorsIcon';
 // import ResizeIcon from '@material-ui/icons/PhotoSizeSelectLarge';
 
 const useStyles = makeStyles(() => ({
