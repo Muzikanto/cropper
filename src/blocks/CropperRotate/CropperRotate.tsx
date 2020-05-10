@@ -37,6 +37,7 @@ const useStyles = makeStyles(() => ({
         left: 0,
         top: 15,
         transform: 'scale(11)',
+        color: '#c7c7c7',
     },
 }), {name: 'Cropper-rotate'});
 

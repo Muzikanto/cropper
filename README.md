@@ -35,6 +35,7 @@ if you are interested in the package, please create an issue in github with your
 
 ### new features
 
+- add cross browser
 - add easy customizing styles
 - add light theme
 - add transition effects
