@@ -54,6 +54,28 @@ function CropperRotate(props: CropperRotateProps) {
 
     const left = props.angle * -5.335;
 
+    const lineSvg = React.useMemo(() => {
+        return (
+            new Array(80)
+                .fill(0)
+                .map((_, i) => {
+                    let v = i * 10 - 400;
+
+                    return (
+                        <React.Fragment key={'rotate-dot' + i}>
+                            <circle fill="currentColor" cx={v} cy="0" r="0.5"/>
+                            <text fill="currentColor" x={v - 1.5} y="3.5">{v}°</text>
+
+                            <circle fill="currentColor" cx={v + 2} cy="0" r="0.2"/>
+                            <circle fill="currentColor" cx={v + 4} cy="0" r="0.2"/>
+                            <circle fill="currentColor" cx={v + 6} cy="0" r="0.2"/>
+                            <circle fill="currentColor" cx={v + 8} cy="0" r="0.2"/>
+                        </React.Fragment>
+                    )
+                })
+        )
+    }, []);
+
     return (
         <Box className={classes.root}>
             <span className={classes.current}/>
@@ -66,25 +88,7 @@ function CropperRotate(props: CropperRotateProps) {
                     viewBox="-720 -5 1440 10" className={classes.svg}
                     style={{left}}
                 >
-                    {
-                        new Array(80)
-                            .fill(0)
-                            .map((_, i) => {
-                                let v = i * 10 - 400;
-
-                                return (
-                                    <React.Fragment key={'rotate-dot' + i}>
-                                        <circle fill="currentColor" cx={v} cy="0" r="0.5"/>
-                                        <text fill="currentColor" x={v - 1.5} y="3.5">{v}°</text>
-
-                                        <circle fill="currentColor" cx={v + 2} cy="0" r="0.2"/>
-                                        <circle fill="currentColor" cx={v + 4} cy="0" r="0.2"/>
-                                        <circle fill="currentColor" cx={v + 6} cy="0" r="0.2"/>
-                                        <circle fill="currentColor" cx={v + 8} cy="0" r="0.2"/>
-                                    </React.Fragment>
-                                )
-                            })
-                    }
+                    {lineSvg}
                 </svg>
             </div>
         </Box>

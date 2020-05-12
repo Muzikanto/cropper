@@ -163,8 +163,8 @@ class CropManager {
 
         const x = state.imageCrop.x + 24;
         const y = state.imageCrop.y + 152;
-        const w = image.width * zoom;
-        const h = image.height * zoom;
+        const w = Math.round(image.width * zoom);
+        const h = Math.round(image.height * zoom);
 
         const cropLeft = Math.ceil(crop.x + horizontalMargin);
         const cropRight = Math.ceil(cropLeft + crop.width);
@@ -173,8 +173,8 @@ class CropManager {
 
         // const translateImageX = (imageCrop.x + horizontalMargin + (imageCrop.width * zoom) / 2);
         // const translateImageY = (imageCrop.y + topMargin + (imageCrop.height * zoom) / 2);
-        const translateX = (crop.x + horizontalMargin + (crop.width) / 2);
-        const translateY = (crop.y + topMargin + (crop.height) / 2);
+        const translateX = Math.round(crop.x + horizontalMargin + (crop.width) / 2);
+        const translateY = Math.round(crop.y + topMargin + (crop.height) / 2);
 
         // clear canvas
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);

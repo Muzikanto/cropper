@@ -105,6 +105,41 @@ function CropperGrid(props: CropperGridProps) {
 
     const diffHeight = props.rotateToAngle ? 56 : 0;
 
+    const dots = React.useMemo(() => (
+        <>
+            <Box
+                className={clsx(classes.circle, classes.circle_lt)}
+                onMouseDown={onMouseDown('lt')}
+            >
+                <div className={classes.circleIcon}/>
+            </Box>
+            <Box
+                className={clsx(classes.circle, classes.circle_rt)}
+                onMouseDown={onMouseDown('rt')}
+            >
+                <div className={classes.circleIcon}/>
+            </Box>
+            <Box
+                className={clsx(classes.circle, classes.circle_lb)}
+                onMouseDown={onMouseDown('lb')}
+            >
+                <div className={classes.circleIcon}/>
+            </Box>
+            <Box
+                className={clsx(classes.circle, classes.circle_rb)}
+                onMouseDown={onMouseDown('rb')}
+            >
+                <div className={classes.circleIcon}/>
+            </Box>
+        </>
+    ), []);
+
+    const sizeSelector = (s: CropManagerState) => ({
+        initialZoom: s.initialZoom,
+        zoom: s.zoom,
+        image: s.imageCrop
+    });
+
     return (
         <div
             className={classes.root}
@@ -126,39 +161,12 @@ function CropperGrid(props: CropperGridProps) {
                                 }}
                                 ref={props.gridRef}
                             >
-                                <Box
-                                    className={clsx(classes.circle, classes.circle_lt)}
-                                    onMouseDown={onMouseDown('lt')}
-                                >
-                                    <div className={classes.circleIcon}/>
-                                </Box>
-                                <Box
-                                    className={clsx(classes.circle, classes.circle_rt)}
-                                    onMouseDown={onMouseDown('rt')}
-                                >
-                                    <div className={classes.circleIcon}/>
-                                </Box>
-                                <Box
-                                    className={clsx(classes.circle, classes.circle_lb)}
-                                    onMouseDown={onMouseDown('lb')}
-                                >
-                                    <div className={classes.circleIcon}/>
-                                </Box>
-                                <Box
-                                    className={clsx(classes.circle, classes.circle_rb)}
-                                    onMouseDown={onMouseDown('rb')}
-                                >
-                                    <div className={classes.circleIcon}/>
-                                </Box>
+                                {dots}
                                 {
                                     props.sizePreview &&
                                     <StoreConsumer
                                         store={props.store}
-                                        selector={s => ({
-                                            initialZoom: s.initialZoom,
-                                            zoom: s.zoom,
-                                            image: s.imageCrop
-                                        })}
+                                        selector={sizeSelector}
                                     >
                                         {
                                             ({zoom, image}: { zoom: number; image: Crop; }) => {
