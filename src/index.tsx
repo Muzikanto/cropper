@@ -21,6 +21,8 @@ import LinearProgress from "@material-ui/core/LinearProgress";
 import CropperSubBarColors from "./blocks/CropperToolbarColors/CropperToolbarColors";
 import clsx from 'clsx';
 
+// https://html5rocks.com/en/tutorials/canvas/imagefilters/
+
 const styles = () => ({
     root: {
         boxSizing: 'border-box',
@@ -276,7 +278,6 @@ class Cropper extends React.Component<CropperProps, CropperState> {
                             </CropperTab>
 
                             <canvas
-                                onClick={e => console.log(e)}
                                 ref={canvasRef => this.canvasRef = canvasRef}
                                 className={classes.canvas}
                                 width={this.container.width}

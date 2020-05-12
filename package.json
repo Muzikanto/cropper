@@ -9,7 +9,7 @@
         "start": "start-storybook -p 5001",
         "build:docs": "build-storybook -o docs",
         "build:components": "tsc -b",
-        "clean": "rm -rf *.ts && rm -rf *.tsx && rm -rf *.js",
+        "clean": "rm -rf *.ts && rm -rf *.tsx && rm -rf *.js && rm -rf manager && rm -rf helpers && rm -rf blocks",
         "build": "npm run clean && tsc -b",
         "linter": "tslint -c tslint.json 'src/**/*.ts' --fix",
         "prepublish": "npm run build",
